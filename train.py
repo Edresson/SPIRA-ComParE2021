@@ -193,13 +193,16 @@ if __name__ == '__main__':
 
     tensorboard = TensorboardWriter(os.path.join(log_path,'tensorboard'))
 
-    train_dataloader = train_dataloader(c, ap)
-    max_seq_len = train_dataloader.dataset.get_max_seq_lenght()
+    trainloader = train_dataloader(c, ap, class_balancer_batch=c.dataset['class_balancer_batch'])
+    max_seq_len = trainloader.dataset.get_max_seq_lenght()
     c.dataset['max_seq_len'] = max_seq_len
-    
+
+
+
+
     # save config in train dir, its necessary for test before train and reproducity
     save_config_file(c, os.path.join(log_path,'config.json'))
 
     eval_dataloader = eval_dataloader(c, ap, max_seq_len=max_seq_len)
 
-    train(args, log_path, args.checkpoint_path, train_dataloader, eval_dataloader, tensorboard, c, c.model_name, ap, cuda=True)
+    train(args, log_path, args.checkpoint_path, trainloader, eval_dataloader, tensorboard, c, c.model_name, ap, cuda=True)

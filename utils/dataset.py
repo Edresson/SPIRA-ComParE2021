@@ -32,16 +32,24 @@ class Dataset(Dataset):
         self.noise_csv = c.dataset['noise_csv'] 
         self.noise_root = c.dataset['noise_data_root_path']
         assert os.path.isfile(self.dataset_csv),"Test or Train CSV file don't exists! Fix it in config.json"
-        assert os.path.isfile(self.noise_csv),"Noise CSV file don't exists! Fix it in config.json"
+        if self.c.data_aumentation['insert_noise']:
+            assert os.path.isfile(self.noise_csv),"Noise CSV file don't exists! Fix it in config.json"
         assert (not self.c.dataset['padding_with_max_lenght'] and self.c.dataset['split_wav_using_overlapping']) or  (self.c.dataset['padding_with_max_lenght'] and not self.c.dataset['split_wav_using_overlapping']),"You cannot use the padding_with_max_length option in conjunction with the split_wav_using_overlapping option, disable one of them !!"
 
-        # read csvs
-        self.dataset_list = pd.read_csv(self.dataset_csv, sep=',').values
-        self.noise_list = pd.read_csv(self.noise_csv, sep=',').values
-        # noise config
-        self.num_noise_files = len(self.noise_list)-1
         self.control_class = c.dataset['control_class']
         self.patient_class = c.dataset['patient_class']
+
+        # read csvs
+        self.dataset_list = pd.read_csv(self.dataset_csv, sep=',').replace({'negative': self.control_class}, regex=True).replace({'positive': self.patient_class}, regex=True).values
+        if self.c.data_aumentation['insert_noise']:
+            self.noise_list = pd.read_csv(self.noise_csv, sep=',').values
+            # noise config
+            self.num_noise_files = len(self.noise_list)-1
+        else:
+            self.noise_list = None
+            self.num_noise_files = 0 
+
+
 
         # get max seq lenght for padding 
         if self.c.dataset['padding_with_max_lenght'] and train and not self.c.dataset['max_seq_len'] and not self.c.dataset['split_wav_using_overlapping']:
@@ -75,7 +83,13 @@ class Dataset(Dataset):
         wav = self.ap.load_wav(os.path.join(self.dataset_root, self.dataset_list[idx][0]))
         #print("FILE:", os.path.join(self.dataset_root, self.dataset_list[idx][0]), wav.shape)
         class_name = self.dataset_list[idx][1]
+        # print('class before transform', class_name)
+        if str(class_name) == 'positive':
+           class_name = self.patient_class
+        elif str(class_name) == 'negative':
+            class_name = self.control_class
 
+        # print('class after transform',class_name)
         # its assume that noise file is biggest than wav file !!
         if self.c.data_aumentation['insert_noise']:
             # Experiments do different things within the dataloader. So depending on the experiment we will have a different random state here in get item. To reproduce the tests always using the same noise we need to set the seed again, ensuring that all experiments see the same noise in the test !!
@@ -165,15 +179,39 @@ class Dataset(Dataset):
     def __len__(self):
         return len(self.dataset_list)
 
-def train_dataloader(c, ap):
-    return DataLoader(dataset=Dataset(c, ap, train=True),
+def train_dataloader(c, ap, class_balancer_batch=False):
+    dataset = Dataset(c, ap, train=True)
+    if class_balancer_batch:
+        shuffle=False
+        print("Using Class Batch Balancer")
+        classes_list = [cl[1] for cl in dataset.dataset_list]
+
+        classes_list = np.array(classes_list)
+        
+        unique_class_names = np.unique(classes_list).tolist()
+        class_ids = [unique_class_names.index(s) for s in classes_list]
+
+        # count number samples by class
+        class_count = np.array([len(np.where(classes_list == c)[0]) for c in unique_class_names])
+        
+        # create weight
+        weight = 1. / class_count
+        samples_weight = np.array([weight[c] for c in class_ids])
+        
+        class_dataset_samples_weight = torch.from_numpy(samples_weight).double()
+        # create sampler
+        sampler = torch.utils.data.sampler.WeightedRandomSampler(class_dataset_samples_weight, len(class_dataset_samples_weight), replacement=True)
+    else: 
+         sampler=None
+         shuffle=True
+    return DataLoader(dataset=dataset,
                           batch_size=c.train_config['batch_size'],
-                          shuffle=True,
+                          shuffle=shuffle,
                           num_workers=c.train_config['num_workers'],
                           collate_fn=own_collate_fn,
                           pin_memory=True,
                           drop_last=True,
-                          sampler=None)
+                          sampler=sampler)
 
 def eval_dataloader(c, ap, max_seq_len=None):
     return DataLoader(dataset=Dataset(c, ap, train=False, max_seq_len=max_seq_len),

@@ -1,0 +1,4 @@
+exp1 - without class batch balancer, without overlapping, model:spiraconv_v2
+exp2 - with class batch balancer, without overlapping, model:spiraconv_v2
+exp3 - without class batch balancer, with overlapping, model:spiraconv_v2
+exp3 - with class batch balancer, with overlapping, model:spiraconv_v2

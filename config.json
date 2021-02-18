@@ -2,51 +2,53 @@
     "model_name":"spiraconv_v2", // spiraconv_v1 and spiraconv_v2
     "seed":42,
     "dataset":{
-       // use the overlapping technique, in which the window was shifted "step" second each time and an instance was extracted during the total audio duration
-        "split_wav_using_overlapping": true, // if true use the overlapping technique, in which the window was shifted "step" second each time and an instance was extracted during the total audio duration
-        "window_len": 4, // windows len in seconds for overlapping technique
+        "class_balancer_batch": false, 
+        // use the overlapping technique, in which the window was shifted "step" second each time and an instance was extracted during the total audio duration
+        "split_wav_using_overlapping": false, // if true use the overlapping technique, in which the window was shifted "step" second each time and an instance was extracted during the total audio duration
+        "window_len": 3, // windows len in seconds for overlapping technique
         "step": 1, // step len in seconds for overlapping technique
-        "padding_with_max_lenght": false,// if true, the timestep axis will be padded with the longest sequence, else, the timestep will be dynamic and the network will predict a vector of the size of the timestep on the output (if you use convulsions it can decrease)
+        "padding_with_max_lenght": true,// if true, the timestep axis will be padded with the longest sequence, else, the timestep will be dynamic and the network will predict a vector of the size of the timestep on the output (if you use convulsions it can decrease)
         "max_seq_len": null, // the data loader set automatically this value and save in train_config['logs_path']/config.json. its is max time dimension value in your train dataset. For convert this value to seconds use: value*hop_length/sample_rate
 
         // train dataset
-        "train_csv":"../SPIRA_Dataset_V2/metadata_train.csv", // format path_wav, class
-        "train_data_root_path": "../SPIRA_Dataset_V2/", // complementary path for csv
+        "train_csv":"../Speech/dist/lab/train.csv", // format path_wav, class
+        "train_data_root_path": "../Speech/dist/wav/", // complementary path for csv
         // evaluation dataset
-        "eval_csv":"../SPIRA_Dataset_V2/metadata_eval.csv", // format path_wav, class
-        "eval_data_root_path": "../SPIRA_Dataset_V2/", // complementary path for csv
+
+        "eval_csv":"../Speech/dist/lab/devel.csv", // format path_wav, class
+        "eval_data_root_path": "../Speech/dist/wav/", // complementary path for csv
         // test dataset
-        "test_csv":"../SPIRA_Dataset_V2/metadata_test.csv", // format path_wav, class
-        "test_data_root_path": "../SPIRA_Dataset_V2/", // complementary path for csv
+        "test_csv":"../Speech/dist/lab/test.csv", // format path_wav, class
+        "test_data_root_path": "../Speech/dist/wav/", // complementary path for csv
         // noise dataset for data aumentation
-        "noise_csv":"../Ruidos-Hospitalares/noise_data.csv",// format path_wav
-        "noise_data_root_path":"../Ruidos-Hospitalares/", // complementary path for csv
+        "noise_csv": null,// format path_wav
+        "noise_data_root_path": null, // complementary path for csv
         // classes definition
-        "control_class": 0,
-        "patient_class": 1
+        "control_class": 0, // negative
+        "patient_class": 1 // positive
     },
     "model":{
         "fc1_dim":100,
         "fc2_dim":1
     },
     "train_config": {
-        "early_stop_epochs": 40, // if 0 disable else if the model does not improve after "early_stop_epochs" epochs, training is stopped
+        "early_stop_epochs":0, // if 0 disable else if the model does not improve after "early_stop_epochs" epochs, training is stopped
         "lr_decay": true, // activate/desactivate Noam Learning Rate Decay Scheme    
         "warmup_steps": 500, //default 4000, Noam decay steps to increase the learning rate from 0 to "lr"
         "epochs": 1000,
         "learning_rate": 1e-3, // Initial learning rate. If Noam decay is active, maximum learning rate.
         "weight_decay": 0.01,  // Weight decay rate for optimizer
         "optimizer":"adam",
-        "batch_size": 30,
+        "batch_size": 5,
         "seed": 42,
         "num_workers": 14,
-        "logs_path": "../checkpoints/spira-chekpoints/",
+        "logs_path": "../Speech/Checkpoints/Experiment-1/",
         "reinit_layers": null,
         "summary_interval": 10,
         "checkpoint_interval": 500
     },
     "data_aumentation":{
-        "insert_noise": true, // disable/enable noise insertion
+        "insert_noise": false, // disable/enable noise insertion
         "num_noise_control": 4, // number of diferents noise samples applied in control files 
         "num_noise_patient": 3, // number of diferents noise samples applied in control files ! we recomend num_noise_control - 1
         // You need set this values, its the maximum and minimum values for noise patients intervals.  You need to cut out the noise in several patient files and calculate the maximum maximum amplitude and the minimum maximum amplitude. An example script to get these values is available at: get_max_amp_using_noise_samples.py

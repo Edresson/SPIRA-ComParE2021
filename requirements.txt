@@ -6,4 +6,4 @@ tensorboardX
 pandas
 PyYAML
 sklearn
-torchaudio
+torchaudio==0.6.0
