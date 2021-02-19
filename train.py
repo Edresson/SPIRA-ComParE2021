@@ -29,26 +29,60 @@ def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda):
     model.eval()
     loss = 0 
     acc = 0
+    targets = []
     with torch.no_grad():
-        for feature, target in testloader:       
+        for feature, target, slices, targets_org in testloader:       
+            
             #try:
             if cuda:
                 feature = feature.cuda()
                 target = target.cuda()
-
             output = model(feature).float()
 
+            # output = torch.round(output * 10**4) / (10**4)
+
             # Calculate loss
-            if not padding_with_max_lenght:
+            if not padding_with_max_lenght and not c.dataset['split_wav_using_overlapping']:
                 target = target[:, :output.shape[1],:target.shape[2]]
+            
+            if c.dataset['split_wav_using_overlapping']:
+                # unpack overlapping for calculation loss and accuracy 
+                if slices is not None and targets_org is not None:
+                    idx = 0
+                    new_output = []
+                    new_target = []
+                    for i in range(slices.size(0)):
+                        num_samples = int(slices[i].cpu().numpy())
+
+                        samples_output = output[idx:idx+num_samples]
+                        output_mean = samples_output.mean()
+                        samples_target = target[idx:idx+num_samples]
+                        target_mean = samples_target.mean()
+
+                        new_target.append(target_mean)
+                        new_output.append(output_mean)
+                        idx += num_samples
+
+                    target = torch.stack(new_target, dim=0)
+                    output = torch.stack(new_output, dim=0)
+                    #print(target, targets_org)
+                    if cuda:
+                        output = output.cuda()
+                        target = target.cuda()
+                        targets_org = targets_org.cuda()
+                    if not torch.equal(targets_org, target):
+                        raise RuntimeError("Integrity problem during the unpack of the overlay for the calculation of accuracy and loss. Check the dataloader !!")
+
             loss += criterion(output, target).item()
 
             # calculate binnary accuracy
             y_pred_tag = torch.round(output)
             acc += (y_pred_tag == target).float().sum().item()
+            targets += target.reshape(-1).int().cpu().numpy().tolist()
 
-        mean_acc = acc / len(testloader.dataset)
-        mean_loss = loss / len(testloader.dataset)
+    mean_acc = acc / len(testloader.dataset)
+    mean_loss = loss / len(testloader.dataset)
+
     print("Validation:\n Loss:", mean_loss, "Acurracy: ", mean_acc)
     model.train()
     return mean_loss
@@ -197,12 +231,9 @@ if __name__ == '__main__':
     max_seq_len = trainloader.dataset.get_max_seq_lenght()
     c.dataset['max_seq_len'] = max_seq_len
 
-
-
-
     # save config in train dir, its necessary for test before train and reproducity
     save_config_file(c, os.path.join(log_path,'config.json'))
 
-    eval_dataloader = eval_dataloader(c, ap, max_seq_len=max_seq_len)
+    evaloader = eval_dataloader(c, ap, max_seq_len=max_seq_len)
 
-    train(args, log_path, args.checkpoint_path, trainloader, eval_dataloader, tensorboard, c, c.model_name, ap, cuda=True)
+    train(args, log_path, args.checkpoint_path, trainloader, evaloader, tensorboard, c, c.model_name, ap, cuda=True)

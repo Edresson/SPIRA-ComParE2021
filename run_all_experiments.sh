@@ -2,7 +2,7 @@
 #python train.py -c Experiments/configs/exp3.4.json
 
 # My gpu memory support two processes
-max_children=2
+max_children=4
 function parallel {
   # Credits: Arnaldo Candido Junior
   local time1=$(date +"%H:%M:%S")
@@ -31,22 +31,8 @@ do
     sleep .6
 done
 
-parallel python train.py -c Experiments/configs/exp1.1.json
-parallel python train.py -c Experiments/configs/exp1.2.json
-parallel python train.py -c Experiments/configs/exp1.3.json
-parallel python train.py -c Experiments/configs/exp2.1.json
-parallel python train.py -c Experiments/configs/exp2.2.json
-parallel python train.py -c Experiments/configs/exp2.3.json
-parallel python train.py -c Experiments/configs/exp3.1.json
-parallel python train.py -c Experiments/configs/exp3.2.json
-parallel python train.py -c Experiments/configs/exp3.3.json
-parallel python train.py -c Experiments/configs/exp3.4.json
-parallel python train.py -c Experiments/configs/exp3.5.json
-parallel python train.py -c Experiments/configs/exp3.6.json
-parallel python train.py -c Experiments/configs/exp3.7.json
-parallel python train.py -c Experiments/configs/exp3.8.json
-parallel python train.py -c Experiments/configs/exp3.9.json
-parallel python train.py -c Experiments/configs/exp3.10.json
-parallel python train.py -c Experiments/configs/exp3.11.json
-parallel python train.py -c Experiments/configs/exp3.12.json
+parallel CUDA_VISIBLE_DEVICES=0 python train.py -c Experiments/configs/exp1.json > ../Speech/Checkpoints/Experiment-1/train.log
+parallel CUDA_VISIBLE_DEVICES=0 python train.py -c Experiments/configs/exp2.json > ../Speech/Checkpoints/Experiment-2/train.log
+parallel CUDA_VISIBLE_DEVICES=1 python train.py -c Experiments/configs/exp3.json > ../Speech/Checkpoints/Experiment-3/train.log
+parallel CUDA_VISIBLE_DEVICES=1 python train.py -c Experiments/configs/exp4.json > ../Speech/Checkpoints/Experiment-4/train.log
 wait

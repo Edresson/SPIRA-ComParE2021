@@ -215,7 +215,7 @@ def train_dataloader(c, ap, class_balancer_batch=False):
 
 def eval_dataloader(c, ap, max_seq_len=None):
     return DataLoader(dataset=Dataset(c, ap, train=False, max_seq_len=max_seq_len),
-                          collate_fn=own_collate_fn, batch_size=c.test_config['batch_size'], 
+                          collate_fn=teste_collate_fn, batch_size=c.test_config['batch_size'], 
                           shuffle=False, num_workers=c.test_config['num_workers'])
 
 
