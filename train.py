@@ -27,8 +27,11 @@ def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda):
     padding_with_max_lenght = c.dataset['padding_with_max_lenght'] or c.dataset['split_wav_using_overlapping']
     model.zero_grad()
     model.eval()
-    loss = 0 
+    loss = 0
+    loss_control = 0
+    loss_patient = 0 
     acc = 0
+    preds = []
     targets = []
     with torch.no_grad():
         for feature, target, slices, targets_org in testloader:       
@@ -41,9 +44,6 @@ def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda):
 
             # output = torch.round(output * 10**4) / (10**4)
 
-            # Calculate loss
-            if not padding_with_max_lenght and not c.dataset['split_wav_using_overlapping']:
-                target = target[:, :output.shape[1],:target.shape[2]]
             
             if c.dataset['split_wav_using_overlapping']:
                 # unpack overlapping for calculation loss and accuracy 
@@ -74,18 +74,46 @@ def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda):
                         raise RuntimeError("Integrity problem during the unpack of the overlay for the calculation of accuracy and loss. Check the dataloader !!")
 
             loss += criterion(output, target).item()
+            idxs = (target == c.dataset['control_class'])
+            loss_control += criterion(output[idxs], target[idxs]).item()
+            idxs = (target == c.dataset['patient_class'])
+            loss_patient += criterion(output[idxs], target[idxs]).item()
 
             # calculate binnary accuracy
             y_pred_tag = torch.round(output)
             acc += (y_pred_tag == target).float().sum().item()
             targets += target.reshape(-1).int().cpu().numpy().tolist()
+            preds += y_pred_tag.reshape(-1).int().cpu().numpy().tolist()
+            
+    targets = np.array(targets)
+    preds = np.array(preds)
+
+    idxs = np.nonzero(targets == c.dataset['control_class'])
+    control_target = targets[idxs]
+    control_preds = preds[idxs]
+    idxs = np.nonzero(targets == c.dataset['patient_class'])
+    
+    patient_target = targets[idxs]
+    patient_preds = preds[idxs]
+    
+    acc_control = (control_preds == control_target).mean()
+    acc_patient = (patient_preds == patient_target).mean()
+
+    acc_balanced = (acc_control + acc_patient) / 2
+
+    loss_control = loss_control / len(control_target)
+    loss_patient = loss_patient / len(patient_target)
+
+    loss_balanced = (loss_control + loss_patient) / 2 
 
     mean_acc = acc / len(testloader.dataset)
     mean_loss = loss / len(testloader.dataset)
-
-    print("Validation:\n Loss:", mean_loss, "Acurracy: ", mean_acc)
+    print("Validation:")
+    print("Acurracy: ", mean_acc, "Acurracy Control: ", acc_control, "Acurracy Patient: ", acc_patient, "Acurracy Balanced", acc_balanced)
+    print("Loss:", mean_loss, "Loss Control:", loss_control, "Loss Patient:", loss_patient, "Loss balanced: ", loss_balanced)
+    tensorboard.log_evaluation(mean_loss, mean_acc, step, loss_balanced, acc_balanced)
     model.train()
-    return mean_loss
+    return loss_balanced
 
 def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, c, model_name, ap, cuda=True):
     padding_with_max_lenght = c.dataset['padding_with_max_lenght'] or c.dataset['split_wav_using_overlapping']

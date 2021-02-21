@@ -1,5 +1,3 @@
-#python train.py -c Experiments/configs/exp3.3.json &
-#python train.py -c Experiments/configs/exp3.4.json
 
 # My gpu memory support two processes
 max_children=4
@@ -31,8 +29,10 @@ do
     sleep .6
 done
 
-parallel CUDA_VISIBLE_DEVICES=0 python train.py -c Experiments/configs/exp1.json > ../Speech/Checkpoints/Experiment-1/train.log
-parallel CUDA_VISIBLE_DEVICES=0 python train.py -c Experiments/configs/exp2.json > ../Speech/Checkpoints/Experiment-2/train.log
-parallel CUDA_VISIBLE_DEVICES=1 python train.py -c Experiments/configs/exp3.json > ../Speech/Checkpoints/Experiment-3/train.log
-parallel CUDA_VISIBLE_DEVICES=1 python train.py -c Experiments/configs/exp4.json > ../Speech/Checkpoints/Experiment-4/train.log
+CUDA_VISIBLE_DEVICES=0 parallel python train.py -c Experiments/configs/Speech/exp1.json > ../Speech/Checkpoints/Experiment-1_train.log
+CUDA_VISIBLE_DEVICES=1 parallel python train.py -c Experiments/configs/Speech/exp2.json > ../Speech/Checkpoints/Experiment-2_train.log
+CUDA_VISIBLE_DEVICES=0 parallel python train.py -c Experiments/configs/Speech/exp3.json > ../Speech/Checkpoints/Experiment-3_train.log
+CUDA_VISIBLE_DEVICES=1 parallel python train.py -c Experiments/configs/Speech/exp4.json > ../Speech/Checkpoints/Experiment-4_train.log
+# CUDA_VISIBLE_DEVICES=1 parallel python train.py -c Experiments/configs/Speech/exp5.json > ../Speech/Checkpoints/Experiment-5_train.log
+
 wait

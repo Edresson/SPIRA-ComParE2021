@@ -44,7 +44,7 @@ class SpiraConvV2(nn.Module):
 
         if self.padding_with_max_lenght:
             # its very useful because if you change the convlutional arquiture the model calculate its, and you dont need change this :)
-            # I prefer aactivate the network in toy example because is more easy than calculate the conv output
+            # I prefer activate the network in toy example because is more easy than calculate the conv output
             # get zeros input
             inp = torch.zeros(1, 1, self.max_seq_len, self.num_feature)
             # get out shape
