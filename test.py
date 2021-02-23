@@ -31,7 +31,6 @@ torch.manual_seed(42)
 torch.cuda.manual_seed(42)
 np.random.seed(42)
 def test(criterion, ap, model, c, testloader, step,  cuda, confusion_matrix=False):
-    padding_with_max_lenght = c.dataset['padding_with_max_lenght']
     losses = []
     accs = []
     model.zero_grad()
@@ -54,10 +53,7 @@ def test(criterion, ap, model, c, testloader, step,  cuda, confusion_matrix=Fals
             # output = torch.round(output * 10**4) / (10**4)
 
             # Calculate loss
-            if not padding_with_max_lenght and not c.dataset['split_wav_using_overlapping']:
-                target = target[:, :output.shape[1],:target.shape[2]]
-            
-            if c.dataset['split_wav_using_overlapping']:
+            if c.dataset["temporal_control"] == "overlapping":
                 # unpack overlapping for calculation loss and accuracy 
                 if slices is not None and targets_org is not None:
                     idx = 0
@@ -136,8 +132,6 @@ def run_test(args, checkpoint_path, testloader, c, model_name, ap, cuda=True):
 
     # define loss function
     criterion = nn.BCELoss(reduction='sum')
-
-    padding_with_max_lenght = c.dataset['padding_with_max_lenght']
     if(model_name == 'spiraconv_v1'):
         model = SpiraConvV1(c)
     elif (model_name == 'spiraconv_v2'):

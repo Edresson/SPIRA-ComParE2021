@@ -20,11 +20,10 @@ from utils.tensorboard import TensorboardWriter
 
 from utils.dataset import train_dataloader, eval_dataloader
 
-from models.spiraconv import SpiraConvV1, SpiraConvV2
+from models.spiraconv import *
 from utils.audio_processor import AudioProcessor 
 
 def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda):
-    padding_with_max_lenght = c.dataset['padding_with_max_lenght'] or c.dataset['split_wav_using_overlapping']
     model.zero_grad()
     model.eval()
     loss = 0
@@ -43,9 +42,7 @@ def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda):
             output = model(feature).float()
 
             # output = torch.round(output * 10**4) / (10**4)
-
-            
-            if c.dataset['split_wav_using_overlapping']:
+            if c.dataset['temporal_control'] == 'overlapping':
                 # unpack overlapping for calculation loss and accuracy 
                 if slices is not None and targets_org is not None:
                     idx = 0
@@ -116,11 +113,17 @@ def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda):
     return loss_balanced
 
 def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, c, model_name, ap, cuda=True):
-    padding_with_max_lenght = c.dataset['padding_with_max_lenght'] or c.dataset['split_wav_using_overlapping']
+    weight_patient = c.train_config['weight_patient'] 
     if(model_name == 'spiraconv_v1'):
         model = SpiraConvV1(c)
     elif (model_name == 'spiraconv_v2'):
         model = SpiraConvV2(c)
+    elif (model_name == 'vit_v1'):
+        model = SpiraVITv1(c)
+    elif (model_name == 'vit_v2'):
+        model = SpiraVITv2(c)
+    elif (model_name == 'spt_v1'):
+        model = SpiraSpTv1(c)
     #elif(model_name == 'voicesplit'):
     else:
         raise Exception(" The model '"+model_name+"' is not suported")
@@ -174,6 +177,7 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
 
     best_loss = float('inf')
 
+    
     # early stop definitions
     early_epochs = 0
 
@@ -185,12 +189,18 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
                     target = target.cuda()
 
                 output = model(feature)
-
                 # Calculate loss
-                # adjust target dim
-                if not padding_with_max_lenght:
-                    target = target[:, :output.shape[1],:]
-                loss = criterion(output, target)
+                if c.dataset['class_balancer_batch']:
+                    idxs = (target == c.dataset['control_class'])
+                    loss_control = criterion(output[idxs], target[idxs])
+                    idxs = (target == c.dataset['patient_class'])
+                    loss_patient = criterion(output[idxs], target[idxs])*weight_patient
+                    loss = (loss_control + loss_patient) / 2
+                    # print('loss:',loss.item(), loss_control.item(), loss_patient.item())
+                else:
+                    loss = criterion(output, target)
+
+                # loss = criterion(output, target)
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
@@ -207,7 +217,10 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
                 # write loss to tensorboard
                 if step % c.train_config['summary_interval'] == 0:
                     tensorboard.log_training(loss, step)
-                    print("Write summary at step %d" % step, ' Loss: ', loss)
+                    if c.dataset['class_balancer_batch']:
+                        print("Write summary at step %d" % step, ' Loss: ', loss, 'Loss control:', loss_control.item(), 'Loss patient:', loss_patient.item())
+                    else:
+                        print("Write summary at step %d" % step, ' Loss: ', loss)
 
                 # save checkpoint file  and evaluate and save sample to tensorboard
                 if step % c.train_config['checkpoint_interval'] == 0:

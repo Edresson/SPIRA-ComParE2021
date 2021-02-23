@@ -2,3 +2,39 @@ run_all_experiments.sh: line 4: 25578 Killed                  "$@"
 run_all_experiments.sh: line 4: 25558 Killed                  "$@"
 run_all_experiments.sh: line 4: 25571 Killed                  "$@"
 run_all_experiments.sh: line 4: 25564 Killed                  "$@"
+Using Class Batch Balancer
+Model Inicialized With Feature mfcc 
+Starting new training run
+Write summary at step 10  Loss:  0.6675462126731873
+=================================================
+Epoch 0 End !
+=================================================
+Validation:
+Acurracy:  0.48135593220338985 Acurracy Control:  0.0 Acurracy Patient:  1.0 Acurracy Balanced 0.5
+Loss: 0.6999939449762894 Loss Control: 0.7763020571540383 Loss Patient: 0.6177746191830702 Loss balanced:  0.6970383381685543
+
+ > BEST MODEL (0.69704) : ../Speech/Checkpoints/Experiment-5/spiraconv_v2/best_checkpoint.pt
+Write summary at step 20  Loss:  0.7323894500732422
+Write summary at step 30  Loss:  0.6526168584823608
+=================================================
+Epoch 1 End !
+=================================================
+Validation:
+Acurracy:  0.48135593220338985 Acurracy Control:  0.0 Acurracy Patient:  1.0 Acurracy Balanced 0.5
+Loss: 0.7119637521646791 Loss Control: 0.8574770868214128 Loss Patient: 0.5551782636575295 Loss balanced:  0.7063276752394712
+Write summary at step 40  Loss:  0.6802315711975098
+Write summary at step 50  Loss:  0.7400975823402405
+=================================================
+Epoch 2 End !
+=================================================
+Validation:
+Acurracy:  0.48135593220338985 Acurracy Control:  0.0 Acurracy Patient:  1.0 Acurracy Balanced 0.5
+Loss: 0.7020644301075046 Loss Control: 0.8108908974267299 Loss Patient: 0.5848077585999395 Loss balanced:  0.6978493280133347
+Write summary at step 60  Loss:  0.6587200164794922
+Write summary at step 70  Loss:  0.6765962839126587
+=================================================
+Epoch 3 End !
+=================================================
+Validation:
+Acurracy:  0.4915254237288136 Acurracy Control:  0.0196078431372549 Acurracy Patient:  1.0 Acurracy Balanced 0.5098039215686274
+Loss: 0.7039015608318782 Loss Control: 0.8090336400698992 Loss Patient: 0.5906254540027027 Loss balanced:  0.699829547036301

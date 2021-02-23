@@ -29,7 +29,7 @@
     },
     "model":{
         "fc1_dim":100,
-        "fc2_dim":1
+        "num_class":1
     },
     "train_config": {
         "early_stop_epochs":0, // if 0 disable else if the model does not improve after "early_stop_epochs" epochs, training is stopped
@@ -39,6 +39,7 @@
         "learning_rate": 1e-3, // Initial learning rate. If Noam decay is active, maximum learning rate.
         "weight_decay": 0.01,  // Weight decay rate for optimizer
         "optimizer":"adam",
+        "weight_patient": 3.37,
         "batch_size": 5,
         "seed": 42,
         "num_workers": 14,

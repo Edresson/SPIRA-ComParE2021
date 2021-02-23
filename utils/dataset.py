@@ -34,7 +34,9 @@ class Dataset(Dataset):
         assert os.path.isfile(self.dataset_csv),"Test or Train CSV file don't exists! Fix it in config.json"
         if self.c.data_aumentation['insert_noise']:
             assert os.path.isfile(self.noise_csv),"Noise CSV file don't exists! Fix it in config.json"
-        assert (not self.c.dataset['padding_with_max_lenght'] and self.c.dataset['split_wav_using_overlapping']) or  (self.c.dataset['padding_with_max_lenght'] and not self.c.dataset['split_wav_using_overlapping']),"You cannot use the padding_with_max_length option in conjunction with the split_wav_using_overlapping option, disable one of them !!"
+        
+        accepted_temporal_control = ['overlapping', 'padding', 'avgpool', 'speech_t']
+        assert (self.c.dataset['temporal_control'] in accepted_temporal_control),"You cannot use the padding_with_max_length option in conjunction with the split_wav_using_overlapping option, disable one of them !!"
 
         self.control_class = c.dataset['control_class']
         self.patient_class = c.dataset['patient_class']
@@ -52,7 +54,7 @@ class Dataset(Dataset):
 
 
         # get max seq lenght for padding 
-        if self.c.dataset['padding_with_max_lenght'] and train and not self.c.dataset['max_seq_len'] and not self.c.dataset['split_wav_using_overlapping']:
+        if self.c.dataset['temporal_control'] == 'padding' and train and not self.c.dataset['max_seq_len']:
             self.max_seq_len = 0
             min_seq = float('inf')
             for idx in range(len(self.dataset_list)):
@@ -66,7 +68,7 @@ class Dataset(Dataset):
             print("The Max Time dim Lenght is: {} (+- {} seconds)".format(self.max_seq_len, ( self.max_seq_len*self.c.audio['hop_length'])/self.ap.sample_rate))
             print("The Min Time dim Lenght is: {} (+- {} seconds)".format(min_seq, (min_seq*self.c.audio['hop_length'])/self.ap.sample_rate))
 
-        elif self.c.dataset['split_wav_using_overlapping']:
+        elif self.c.dataset['temporal_control'] == 'overlapping' or self.c.dataset['temporal_control'] == 'speech_t':
             # set max len for window_len seconds multiply by sample_rate and divide by hop_lenght
             self.max_seq_len = int(((self.c.dataset['window_len']*self.ap.sample_rate)/c.audio['hop_length'])+1)
             print("The Max Time dim Lenght is: ", self.max_seq_len, "It's use overlapping technique, window:", self.c.dataset['window_len'], "step:", self.c.dataset['step'])
@@ -134,7 +136,7 @@ class Dataset(Dataset):
                     wav = wav + noise_wav
                 
                 #torchaudio.save('depois_patient.wav', wav, self.ap.sample_rate)
-        if self.c.dataset['split_wav_using_overlapping']:
+        if self.c.dataset['temporal_control'] == 'overlapping' or self.c.dataset['temporal_control'] == 'speech_t':
             #print("Wav len:", wav.shape[1])
             #print("for",self.ap.sample_rate*self.c.dataset['window_len'], wav.shape[1], self.ap.sample_rate*self.c.dataset['step'])
             start_slice = 0
@@ -157,7 +159,9 @@ class Dataset(Dataset):
             else:
                 feature = torch.cat(features, dim=0)
                 target = torch.cat(targets, dim=0)
-            #print(feature.shape)
+            if self.c.dataset['temporal_control'] == 'speech_t':
+                feature = feature.unsqueeze(1)                
+                target = torch.FloatTensor([target[0]])
         else:
             # feature shape (Batch_size, n_features, timestamp)
             feature = self.ap.get_feature_from_audio(wav)
@@ -165,14 +169,14 @@ class Dataset(Dataset):
             feature = feature.transpose(1,2)
             # remove batch dim = (timestamp, n_features)
             feature = feature.reshape(feature.shape[1:])
-            if self.c.dataset['padding_with_max_lenght']:
+            if self.c.dataset['temporal_control'] == 'padding':
                 # padding for max sequence 
                 zeros = torch.zeros(self.max_seq_len - feature.size(0),feature.size(1))
                 # append zeros before features
                 feature = torch.cat([feature, zeros], 0)
                 target = torch.FloatTensor([class_name])                
-            else:
-                target = torch.zeros(feature.shape[0], 1)+class_name
+            else: # avgpoling
+                target = torch.FloatTensor([class_name])
 
         return feature, target
 
@@ -235,6 +239,9 @@ def own_collate_fn(batch):
     if len(features[0].shape) == 3: # if dim is 3, we have a many specs because we use a overlapping
         targets = torch.cat(targets, dim=0)
         features = torch.cat(features, dim=0)
+    elif len(features[0].shape) == 4: # if dim = 4 is speech transformer mode
+        features = pad_sequence(features, batch_first=True, padding_value=0).squeeze(2)
+        targets = torch.cat(targets, dim=0)
     else:    
         # padding with zeros timestamp dim
         features = pad_sequence(features, batch_first=True, padding_value=0)
@@ -266,6 +273,9 @@ def teste_collate_fn(batch):
     if len(features[0].shape) == 3: # if dim is 3, we have a many specs because we use a overlapping
         targets = torch.cat(targets, dim=0)
         features = torch.cat(features, dim=0)
+    elif len(features[0].shape) == 4: # if dim = 4 is speech transformer mode
+        features = pad_sequence(features, batch_first=True, padding_value=0).squeeze(2)
+        targets = torch.cat(targets, dim=0)
     else:    
         # padding with zeros timestamp dim
         features = pad_sequence(features, batch_first=True, padding_value=0)

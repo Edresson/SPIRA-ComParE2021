@@ -34,5 +34,5 @@ CUDA_VISIBLE_DEVICES=1 parallel python train.py -c Experiments/configs/Speech/ex
 CUDA_VISIBLE_DEVICES=0 parallel python train.py -c Experiments/configs/Speech/exp3.json > ../Speech/Checkpoints/Experiment-3_train.log
 CUDA_VISIBLE_DEVICES=1 parallel python train.py -c Experiments/configs/Speech/exp4.json > ../Speech/Checkpoints/Experiment-4_train.log
 # CUDA_VISIBLE_DEVICES=1 parallel python train.py -c Experiments/configs/Speech/exp5.json > ../Speech/Checkpoints/Experiment-5_train.log
-
+ python train.py -c Experiments/configs/Speech/exp7.json > ../Speech/Checkpoints/Experiment-7_train.log
 wait

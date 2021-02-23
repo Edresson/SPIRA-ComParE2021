@@ -8,7 +8,7 @@
         "window_len": 3, // windows len in seconds for overlapping technique
         "step": 1, // step len in seconds for overlapping technique
         "padding_with_max_lenght": true,// if true, the timestep axis will be padded with the longest sequence, else, the timestep will be dynamic and the network will predict a vector of the size of the timestep on the output (if you use convulsions it can decrease)
-        "lenght_control": "poling", // overleaping, padding, poling
+        "temporal_control": "avgpool", // overlapping, padding, avgpool
         "max_seq_len": null, // the data loader set automatically this value and save in train_config['logs_path']/config.json. its is max time dimension value in your train dataset. For convert this value to seconds use: value*hop_length/sample_rate
 
         // train dataset
@@ -30,7 +30,7 @@
     },
     "model":{
         "fc1_dim":100,
-        "fc2_dim":1
+        "num_class":1
     },
     "train_config": {
         "early_stop_epochs":0, // if 0 disable else if the model does not improve after "early_stop_epochs" epochs, training is stopped
@@ -40,10 +40,11 @@
         "learning_rate": 1e-3, // Initial learning rate. If Noam decay is active, maximum learning rate.
         "weight_decay": 0,  // Weight decay rate for optimizer 
         "optimizer":"adam",
+        "weight_patient": 3.37,
         "batch_size": 16,
         "seed": 42,
         "num_workers": 14,
-        "logs_path": "../Speech/Checkpoints/Experiment-5/",
+        "logs_path": "../Speech/Checkpoints/Experiment-6/",
         "reinit_layers": null,
         "summary_interval": 10,
         "checkpoint_interval": 500
