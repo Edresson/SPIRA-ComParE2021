@@ -3,4 +3,15 @@ exp2 - with class batch balancer, without overlapping, model:spiraconv_v2
 exp3 - without class batch balancer, with overlapping, model:spiraconv_v2
 exp4 - with class batch balancer, with overlapping, model:spiraconv_v2
 exp5 - exp2 with weight_decay=0
+# daqui para baixo loss normalized e loss extra
+exp7 - speech transformer melhor modelo transformer --> 0.6
+exp8 - spirav2 com meu weight loss1 ( melhor de todos)  ---> bom 0.7
+exp9 - spirav2 using noise ["noise", "speech", "music"]
+exp10 - spirav2 using noise ["noise", "music"]
+exp11 - spirav2 using noise ["noise"]  ---> bom 0.7
+exp12 - exp  exp7 com ["noise", "speech", "music"]
+exp13 - exp  exp7 com ["noise", "music"] ---> bom melhor transformer ate agr 0.64
+exp14 - exp  exp7 com ["noise"]
+exp15 -  exp8 com transfer learning do modelo de tosse ---> bom 0.7
+exp16 - exp 8 com dados removidos os silencios
 

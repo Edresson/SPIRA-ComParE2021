@@ -15,14 +15,16 @@ from utils.generic_utils import set_init_dict
 
 from utils.generic_utils import NoamLR, binary_acc
 
-from utils.generic_utils import save_best_checkpoint, F1Score
+from utils.generic_utils import save_best_checkpoint
 
 from utils.tensorboard import TensorboardWriter
 
 from utils.dataset import test_dataloader
 
-from models.spiraconv import SpiraConvV1, SpiraConvV2
+from models.spiraconv import *
 from utils.audio_processor import AudioProcessor 
+
+from sklearn.metrics import f1_score, recall_score
 
 import random
 # set random seed
@@ -41,7 +43,6 @@ def test(criterion, ap, model, c, testloader, step,  cuda, confusion_matrix=Fals
     acc = 0
     preds = []
     targets = []
-    f1_scorer = F1Score('macro')
     with torch.no_grad():
         for feature, target, slices, targets_org in testloader:       
             #try:
@@ -112,8 +113,9 @@ def test(criterion, ap, model, c, testloader, step,  cuda, confusion_matrix=Fals
         loss_patient = loss_patient / len(patient_target)
 
         loss_balanced = (loss_control + loss_patient) / 2
-        # f1 = f1_scorer(torch.FloatTensor(preds), torch.FloatTensor(targets))
-        # print('F1: ', f1)
+        f1 = f1_score(targets.tolist(), preds.tolist())
+        # print(targets.shape, preds.shape)
+        uar = recall_score(targets.tolist(), preds.tolist(), average='macro')
         if confusion_matrix:
             print("======== Confusion Matrix ==========")
             y_target = pd.Series(targets, name='Target')
@@ -125,6 +127,7 @@ def test(criterion, ap, model, c, testloader, step,  cuda, confusion_matrix=Fals
         mean_loss = loss / len(testloader.dataset)
     print("Test\n ", "Acurracy: ", mean_acc, "Acurracy Control: ", acc_control, "Acurracy Patient: ", acc_patient, "Acurracy Balanced", acc_balanced)
     print("Loss:", mean_loss, "Loss Control:", loss_control, "Loss Patient:", loss_patient, "Loss balanced: ", loss_balanced)
+    print("F1:", f1, "UAR:", uar)
     return mean_acc
 
 
@@ -136,7 +139,12 @@ def run_test(args, checkpoint_path, testloader, c, model_name, ap, cuda=True):
         model = SpiraConvV1(c)
     elif (model_name == 'spiraconv_v2'):
         model = SpiraConvV2(c)
-    #elif(model_name == 'voicesplit'):
+    elif (model_name == 'vit_v1'):
+        model = SpiraVITv1(c)
+    elif (model_name == 'vit_v2'):
+        model = SpiraVITv2(c)
+    elif (model_name == 'spt_v1'):
+        model = SpiraSpTv1(c)
     else:
         raise Exception(" The model '"+model_name+"' is not suported")
 

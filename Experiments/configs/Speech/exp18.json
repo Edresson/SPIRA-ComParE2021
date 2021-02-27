@@ -6,7 +6,7 @@
         // use the overlapping technique, in which the window was shifted "step" second each time and an instance was extracted during the total audio duration
         // "split_wav_using_overlapping": false, // if true use the overlapping technique, in which the window was shifted "step" second each time and an instance was extracted during the total audio duration
         "window_len": 2, // windows len in seconds for overlapping technique
-        "step": 2, // step len in seconds for overlapping technique
+        "step": 1, // step len in seconds for overlapping technique
         // "padding_with_max_lenght": true,// if true, the timestep axis will be padded with the longest sequence, else, the timestep will be dynamic and the network will predict a vector of the size of the timestep on the output (if you use convulsions it can decrease)
         "temporal_control": "speech_t", // overlapping, padding, avgpool, speech_t
 
@@ -14,14 +14,14 @@
         "num_max_patches": 70,
         // train dataset
         "train_csv":"../Speech/dist/lab/train.csv", // format path_wav, class
-        "train_data_root_path": "../Speech/dist/wav_normalized/", // complementary path for csv
+        "train_data_root_path": "../Speech/dist/wav_normalized_removed_silence/", // complementary path for csv
         // evaluation dataset
 
         "eval_csv":"../Speech/dist/lab/devel.csv", // format path_wav, class
-        "eval_data_root_path": "../Speech/dist/wav_normalized/", // complementary path for csv
+        "eval_data_root_path": "../Speech/dist/wav_normalized_removed_silence/", // complementary path for csv
         // test dataset
         "test_csv":"../Speech/dist/lab/test.csv", // format path_wav, class
-        "test_data_root_path": "../Speech/dist/wav_normalized/", // complementary path for csv
+        "test_data_root_path": "../Speech/dist/wav_normalized_removed_silence/", // complementary path for csv
         // noise dataset for data aumentation
         "noise_csv": null,// format path_wav
         "noise_data_root_path": null, // complementary path for csv
@@ -45,7 +45,7 @@
         "batch_size": 16,
         "seed": 42,
         "num_workers": 14,
-        "logs_path": "../Speech/Checkpoints/Experiment-7/",
+        "logs_path": "../Speech/Checkpoints/Experiment-18/",
         "reinit_layers": null,
         "summary_interval": 10,
         "checkpoint_interval": 500
@@ -63,7 +63,7 @@
         "num_workers": 10 // used on evaluation and test
     },
     "audio": {
-        "feature": "mfcc", // spectrogram or melspectrogram or mfcc
+        "feature": "spectrogram", // spectrogram or melspectrogram or mfcc
         // wave load paramers
         "sample_rate": 16000,
         "normalize": true, // if true, then output is divided by 1 << 31 (assumes signed 32-bit audio), and normalizes to [-1, 1]. If number, then output is divided by that number If callable, then the output is passed as a parameter to the given function, then the output is divided by the result. 

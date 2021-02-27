@@ -35,3 +35,9 @@ echo "____________________EVALUATION____________________"
 # without noise
 python test.py --test_csv ../Speech/dist/lab/devel.csv -r ../Speech/dist/wav --checkpoint_path ../Speech/Checkpoints/Experiment-5/spiraconv_v2/best_checkpoint.pt --config_path ../Speech/Checkpoints/Experiment-5/spiraconv_v2/config.json  --batch_size 16 --num_workers 2 
 echo "========================================================="
+
+echo "==================== Experiment 7 ===================="
+echo "____________________EVALUATION____________________"
+# without noise
+python test.py --test_csv ../Speech/dist/lab/devel.csv -r ../Speech/dist/wav_normalized --checkpoint_path ../Speech/Checkpoints/Experiment-7/spt_v1/best_checkpoint.pt --config_path ../Speech/Checkpoints/Experiment-7/spt_v1/config.json  --batch_size 16 --num_workers 2 
+echo "========================================================="

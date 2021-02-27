@@ -14,14 +14,14 @@
         "num_max_patches": 70,
         // train dataset
         "train_csv":"../Speech/dist/lab/train.csv", // format path_wav, class
-        "train_data_root_path": "../Speech/dist/wav_normalized/", // complementary path for csv
+        "train_data_root_path": "../Speech/dist/wav_normalized_removed_silence/", // complementary path for csv
         // evaluation dataset
 
         "eval_csv":"../Speech/dist/lab/devel.csv", // format path_wav, class
-        "eval_data_root_path": "../Speech/dist/wav_normalized/", // complementary path for csv
+        "eval_data_root_path": "../Speech/dist/wav_normalized_removed_silence/", // complementary path for csv
         // test dataset
         "test_csv":"../Speech/dist/lab/test.csv", // format path_wav, class
-        "test_data_root_path": "../Speech/dist/wav_normalized/", // complementary path for csv
+        "test_data_root_path": "../Speech/dist/wav_normalized_removed_silence/", // complementary path for csv
         // noise dataset for data aumentation
         "noise_csv": null,// format path_wav
         "noise_data_root_path": null, // complementary path for csv
@@ -45,7 +45,7 @@
         "batch_size": 16,
         "seed": 42,
         "num_workers": 14,
-        "logs_path": "../Speech/Checkpoints/Experiment-7/",
+        "logs_path": "../Speech/Checkpoints/Experiment-17/",
         "reinit_layers": null,
         "summary_interval": 10,
         "checkpoint_interval": 500

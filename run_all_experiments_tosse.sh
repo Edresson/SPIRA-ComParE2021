@@ -22,5 +22,6 @@ CUDA_VISIBLE_DEVICES=0 parallel python train.py -c Experiments/configs/Tosse/exp
 CUDA_VISIBLE_DEVICES=1 parallel python train.py -c Experiments/configs/Tosse/exp2.json > ../Tosse/Checkpoints/Experiment-2_train.log
 CUDA_VISIBLE_DEVICES=0 parallel python train.py -c Experiments/configs/Tosse/exp3.json > ../Tosse/Checkpoints/Experiment-3_train.log
 CUDA_VISIBLE_DEVICES=1 parallel python train.py -c Experiments/configs/Tosse/exp4.json > ../Tosse/Checkpoints/Experiment-4_train.log
-CUDA_VISIBLE_DEVICES=1  python train.py -c Experiments/configs/Tosse/exp5.json > ../Tosse/Checkpoints/Experiment-5_train.log
+CUDA_VISIBLE_DEVICES=1 parallel  python train.py -c Experiments/configs/Tosse/exp5.json > ../Tosse/Checkpoints/Experiment-5_train.log
+CUDA_VISIBLE_DEVICES=1   python train.py -c Experiments/configs/Tosse/exp8.json > ../Tosse/Checkpoints/Experiment-8_train.log
 wait

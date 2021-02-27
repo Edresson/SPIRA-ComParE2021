@@ -1,0 +1,63 @@
+import os
+import math
+import torch
+import torch.nn as nn
+import traceback
+
+import time
+import numpy as np
+
+import argparse
+
+from utils.generic_utils import load_config, save_config_file
+from utils.generic_utils import set_init_dict
+
+from utils.generic_utils import NoamLR, binary_acc
+
+from utils.generic_utils import save_best_checkpoint
+
+from utils.tensorboard import TensorboardWriter
+
+from utils.dataset import train_dataloader, eval_dataloader
+
+from models.spiraconv import *
+from utils.audio_processor import AudioProcessor 
+
+from train import train
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--config_path', type=str, required=True,
+                        help="json file with configurations")
+    parser.add_argument('--checkpoint_path', type=str, default=None,
+                        help="path of checkpoint pt file, for continue training")
+    parser.add_argument('-s', '--seed', type=int, default=None,
+                        help="Seed for training")
+    args = parser.parse_args()
+    c = load_config(args.config_path)
+    current_path = c.train_config['logs_path']
+    for weight in np.arange(1, 4, 0.5):
+        c = load_config(args.config_path)
+        c.train_config['logs_path'] = current_path+'-'+str(weight)
+        c.train_config['loss1_weight'] = weight
+        ap = AudioProcessor(**c.audio)
+        
+        if args.seed is None:
+            log_path = os.path.join(c.train_config['logs_path'], c.model_name)
+        else:
+            log_path = os.path.join(os.path.join(c.train_config['logs_path'], str(args.seed)), c.model_name)
+            c.train_config['seed'] = args.seed
+
+        os.makedirs(log_path, exist_ok=True)
+
+        tensorboard = TensorboardWriter(os.path.join(log_path,'tensorboard'))
+
+        trainloader = train_dataloader(c, ap, class_balancer_batch=c.dataset['class_balancer_batch'])
+        max_seq_len = trainloader.dataset.get_max_seq_lenght()
+        c.dataset['max_seq_len'] = max_seq_len
+
+        # save config in train dir, its necessary for test before train and reproducity
+        save_config_file(c, os.path.join(log_path,'config.json'))
+
+        evaloader = eval_dataloader(c, ap, max_seq_len=max_seq_len)
+
+        train(args, log_path, args.checkpoint_path, trainloader, evaloader, tensorboard, c, c.model_name, ap, cuda=True)

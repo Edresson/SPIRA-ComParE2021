@@ -23,7 +23,7 @@ from utils.dataset import train_dataloader, eval_dataloader
 from models.spiraconv import *
 from utils.audio_processor import AudioProcessor 
 
-def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda):
+def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda, loss1_weight=1):
     model.zero_grad()
     model.eval()
     loss = 0
@@ -102,18 +102,22 @@ def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda):
     loss_patient = loss_patient / len(patient_target)
 
     loss_balanced = (loss_control + loss_patient) / 2 
-
+    
+    loss_final = (loss1_weight*loss_balanced) + abs(loss_control - loss_patient)/2
+    
     mean_acc = acc / len(testloader.dataset)
     mean_loss = loss / len(testloader.dataset)
+
     print("Validation:")
     print("Acurracy: ", mean_acc, "Acurracy Control: ", acc_control, "Acurracy Patient: ", acc_patient, "Acurracy Balanced", acc_balanced)
-    print("Loss:", mean_loss, "Loss Control:", loss_control, "Loss Patient:", loss_patient, "Loss balanced: ", loss_balanced)
+    print("Loss normal:", mean_loss, "Loss Control:", loss_control, "Loss Patient:", loss_patient, "Loss balanced: ", loss_balanced, "Loss1+loss2:", loss_final)
     tensorboard.log_evaluation(mean_loss, mean_acc, step, loss_balanced, acc_balanced)
     model.train()
-    return loss_balanced
+    return loss_final
 
 def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, c, model_name, ap, cuda=True):
-    weight_patient = c.train_config['weight_patient'] 
+    loss1_weight = c.train_config['loss1_weight']
+
     if(model_name == 'spiraconv_v1'):
         model = SpiraConvV1(c)
     elif (model_name == 'spiraconv_v2'):
@@ -138,28 +142,23 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
     if checkpoint_path is not None:
         print("Continue training from checkpoint: %s" % checkpoint_path)
         try:
-            if c.train_config['reinit_layers']:
-                raise RuntimeError
             checkpoint = torch.load(checkpoint_path, map_location='cpu')
             model.load_state_dict(checkpoint['model'])
-            if cuda:
-                model = model.cuda()
         except:
             print(" > Partial model initialization.")
             model_dict = model.state_dict()
             model_dict = set_init_dict(model_dict, checkpoint, c)
             model.load_state_dict(model_dict)
             del model_dict
-        try:
+        '''try:
             optimizer.load_state_dict(checkpoint['optimizer'])
         except:
             print(" > Optimizer state is not loaded from checkpoint path, you see this mybe you change the optimizer")
-        
-        step = checkpoint['step']
+        '''
+        step = 0 #step = checkpoint['step']
     else:
         print("Starting new training run")
         step = 0
-
 
     if c.train_config['lr_decay']:
         scheduler = NoamLR(optimizer,
@@ -170,6 +169,7 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
     # convert model from cuda
     if cuda:
         model = model.cuda()
+        # optimizer = optimizer.cuda()
 
     # define loss function
     criterion = nn.BCELoss()
@@ -194,8 +194,9 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
                     idxs = (target == c.dataset['control_class'])
                     loss_control = criterion(output[idxs], target[idxs])
                     idxs = (target == c.dataset['patient_class'])
-                    loss_patient = criterion(output[idxs], target[idxs])*weight_patient
-                    loss = (loss_control + loss_patient) / 2
+                    loss_patient = criterion(output[idxs], target[idxs])
+                    loss = (loss_control + loss_patient)/2
+                    loss = (loss1_weight*loss) + torch.abs(loss_control - loss_patient)/2
                     # print('loss:',loss.item(), loss_control.item(), loss_patient.item())
                 else:
                     loss = criterion(output, target)
@@ -233,14 +234,14 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
                     }, save_path)
                     print("Saved checkpoint to: %s" % save_path)
                     # run validation and save best checkpoint
-                    val_loss = validation(eval_criterion, ap, model, c, testloader, tensorboard, step,  cuda=cuda)
+                    val_loss = validation(eval_criterion, ap, model, c, testloader, tensorboard, step,  cuda=cuda, loss1_weight=loss1_weight)
                     best_loss, _ = save_best_checkpoint(log_dir, model, optimizer, c, step, val_loss, best_loss, early_epochs if c.train_config['early_stop_epochs'] != 0 else None)
         
         print('=================================================')
         print("Epoch %d End !"%epoch)
         print('=================================================')
         # run validation and save best checkpoint at end epoch
-        val_loss = validation(eval_criterion, ap, model, c, testloader, tensorboard, step,  cuda=cuda)
+        val_loss = validation(eval_criterion, ap, model, c, testloader, tensorboard, step,  cuda=cuda, loss1_weight=loss1_weight)
         best_loss, early_epochs = save_best_checkpoint(log_dir, model, optimizer, c, step, val_loss, best_loss,  early_epochs if c.train_config['early_stop_epochs'] != 0 else None)
         if c.train_config['early_stop_epochs'] != 0:
             if early_epochs is not None:

@@ -3,11 +3,68 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torch import stack
 import numpy as np
+import numpy
 import pandas as pd
 import random
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pad_sequence
 import torchaudio
+from scipy import signal
+import wavfile
+import glob
+
+class AugmentWAV(object):
+    '''Credits: https://github.com/clovaai/voxceleb_trainer/blob/3bfd557fab5a3e6cd59d717f5029b3a20d22a281/DatasetLoader.py#L55'''
+    def __init__(self, musan_path, noisetypes=['noise', 'speech', 'music']):
+
+        print(noisetypes)
+        self.noisetypes = noisetypes
+
+        self.noisesnr   = {'noise':[0,15],'speech':[13,20],'music':[5,15]}
+        self.numnoise   = {'noise':[1,1], 'speech':[3,7],  'music':[1,1] }
+        self.noiselist  = {}
+        augment_files   = glob.glob(os.path.join(musan_path,'*/*/*.wav'));
+
+        for file in augment_files:
+            if not file.split('/')[-3] in self.noiselist:
+                self.noiselist[file.split('/')[-3]] = []
+            self.noiselist[file.split('/')[-3]].append(file)
+    def additive_noise(self, ap, audio, noisecat=None):
+        if noisecat is None:
+            augtype = random.randint(0, len(self.noisetypes))
+            # if 0 dont aplly noise
+            if augtype == 0:
+                return audio
+            noisecat = self.noisetypes[augtype-1]
+
+        wav = audio.numpy().reshape(-1)
+        clean_db = 10 * numpy.log10(numpy.mean(wav ** 2)+1e-4) 
+        numnoise = self.numnoise[noisecat]
+        noiselist = random.sample(self.noiselist[noisecat], random.randint(numnoise[0],numnoise[1]))
+
+        final_noise_audio = None
+        for noise in noiselist:
+            noise_wav = ap.load_wav(noise).numpy().reshape(-1)
+            noise_wav_len = noise_wav.shape[0]
+            wav_len = wav.shape[0]
+            if noise_wav_len <= wav_len:
+                continue
+                
+            noise_start_slice = random.randint(0,noise_wav_len-(wav_len+1))
+            noise_wav = noise_wav[noise_start_slice:noise_start_slice+wav_len]
+
+            noise_snr = random.uniform(self.noisesnr[noisecat][0],self.noisesnr[noisecat][1])
+            noise_db = 10 * numpy.log10(numpy.mean(noise_wav ** 2)+1e-4)
+            if final_noise_audio is None:
+                final_noise_audio = numpy.sqrt(10 ** ((clean_db - noise_db - noise_snr) / 10)) * noise_wav
+            else:
+                final_noise_audio += (numpy.sqrt(10 ** ((clean_db - noise_db - noise_snr) / 10)) * noise_wav)
+        if final_noise_audio is None:
+            return self.additive_noise(ap, audio, noisecat)
+        out_audio = torch.FloatTensor(wav + final_noise_audio).unsqueeze(0)
+        return out_audio
+
+
 class Dataset(Dataset):
     """
     Class for load a train and test from dataset generate by import_librispeech.py and others
@@ -29,11 +86,9 @@ class Dataset(Dataset):
         if test:
             self.dataset_csv = c.dataset['test_csv']
             self.dataset_root = c.dataset['test_data_root_path']
-        self.noise_csv = c.dataset['noise_csv'] 
-        self.noise_root = c.dataset['noise_data_root_path']
+
         assert os.path.isfile(self.dataset_csv),"Test or Train CSV file don't exists! Fix it in config.json"
-        if self.c.data_aumentation['insert_noise']:
-            assert os.path.isfile(self.noise_csv),"Noise CSV file don't exists! Fix it in config.json"
+        
         
         accepted_temporal_control = ['overlapping', 'padding', 'avgpool', 'speech_t']
         assert (self.c.dataset['temporal_control'] in accepted_temporal_control),"You cannot use the padding_with_max_length option in conjunction with the split_wav_using_overlapping option, disable one of them !!"
@@ -43,14 +98,7 @@ class Dataset(Dataset):
 
         # read csvs
         self.dataset_list = pd.read_csv(self.dataset_csv, sep=',').replace({'negative': self.control_class}, regex=True).replace({'positive': self.patient_class}, regex=True).values
-        if self.c.data_aumentation['insert_noise']:
-            self.noise_list = pd.read_csv(self.noise_csv, sep=',').values
-            # noise config
-            self.num_noise_files = len(self.noise_list)-1
-        else:
-            self.noise_list = None
-            self.num_noise_files = 0 
-
+        
 
 
         # get max seq lenght for padding 
@@ -77,6 +125,11 @@ class Dataset(Dataset):
                 self.max_seq_len = self.c.dataset['max_seq_len']
             else:
                 self.max_seq_len = max_seq_len
+        
+        if self.c.data_aumentation['insert_noise']:
+            self.augment_wav = AugmentWAV(self.c.data_aumentation['musan_path'], noisetypes=self.c.data_aumentation['noisetypes'])
+        else:
+            self.augment_wav = None
 
     def get_max_seq_lenght(self):
         return self.max_seq_len
@@ -93,49 +146,10 @@ class Dataset(Dataset):
 
         # print('class after transform',class_name)
         # its assume that noise file is biggest than wav file !!
-        if self.c.data_aumentation['insert_noise']:
-            # Experiments do different things within the dataloader. So depending on the experiment we will have a different random state here in get item. To reproduce the tests always using the same noise we need to set the seed again, ensuring that all experiments see the same noise in the test !!
-            if self.test:
-                random.seed(self.c['seed']*idx) # multiply by idx, because if not we generate same some for all files !
-                torch.manual_seed(self.c['seed']*idx)
-                torch.cuda.manual_seed(self.c['seed']*idx)
-                np.random.seed(self.c['seed']*idx)
-            if self.control_class == class_name: # if sample is a control sample
-                # torchaudio.save('antes_control.wav', wav, self.ap.sample_rate)
-                for _ in range(self.c.data_aumentation['num_noise_control']):
-                    # choise random noise file
-                    noise_wav = self.ap.load_wav(os.path.join(self.noise_root, self.noise_list[random.randint(0, self.num_noise_files)][0]))
-                    noise_wav_len = noise_wav.shape[1]
-                    wav_len = wav.shape[1]
-                    noise_start_slice = random.randint(0,noise_wav_len-(wav_len+1))
-                    # print(noise_start_slice, noise_start_slice+wav_len)
-                    # sum two diferents noise
-                    noise_wav = noise_wav[:,noise_start_slice:noise_start_slice+wav_len]
-                    # get random max amp for noise
-                    max_amp = random.uniform(self.c.data_aumentation['noise_min_amp'], self.c.data_aumentation['noise_max_amp'])
-                    reduct_factor = max_amp/float(noise_wav.max().numpy())
-                    noise_wav = noise_wav*reduct_factor
-                    wav = wav + noise_wav
-                #torchaudio.save('depois_controle.wav', wav, self.ap.sample_rate)
-                
-            elif self.patient_class == class_name: # if sample is a patient sample
-                for _ in range(self.c.data_aumentation['num_noise_patient']):
-                    
-                    # torchaudio.save('antes_patiente.wav', wav, self.ap.sample_rate)
-                    # choise random noise file
-                    noise_wav = self.ap.load_wav(os.path.join(self.noise_root, self.noise_list[random.randint(0, self.num_noise_files)][0]))
-                    noise_wav_len = noise_wav.shape[1]
-                    wav_len = wav.shape[1]
-                    noise_start_slice = random.randint(0,noise_wav_len-(wav_len+1))
-                    # sum two diferents noise
-                    noise_wav = noise_wav[:,noise_start_slice:noise_start_slice+wav_len]
-                    # get random max amp for noise
-                    max_amp = random.uniform(self.c.data_aumentation['noise_min_amp'], self.c.data_aumentation['noise_max_amp'])
-                    reduct_factor = max_amp/float(noise_wav.max().numpy())
-                    noise_wav = noise_wav*reduct_factor
-                    wav = wav + noise_wav
-                
-                #torchaudio.save('depois_patient.wav', wav, self.ap.sample_rate)
+        # torchaudio.save('wav.wav', wav, self.ap.sample_rate)   
+        if self.c.data_aumentation['insert_noise'] and self.train:
+            wav = self.augment_wav.additive_noise(self.ap, wav)
+
         if self.c.dataset['temporal_control'] == 'overlapping' or self.c.dataset['temporal_control'] == 'speech_t':
             #print("Wav len:", wav.shape[1])
             #print("for",self.ap.sample_rate*self.c.dataset['window_len'], wav.shape[1], self.ap.sample_rate*self.c.dataset['step'])
@@ -143,8 +157,10 @@ class Dataset(Dataset):
             features = []
             targets = []
             step = self.ap.sample_rate*self.c.dataset['step']
-            for end_slice in range(self.ap.sample_rate*self.c.dataset['window_len'], wav.shape[1], step):
-                #print("Slices: ", start_slice, end_slice)
+            for end_slice in np.arange(self.ap.sample_rate*self.c.dataset['window_len'], wav.shape[1], step):
+                # print("Slices: ", start_slice, end_slice)
+                start_slice = int(start_slice)
+                end_slice = int(end_slice)
                 spec = self.ap.get_feature_from_audio(wav[:, start_slice:end_slice]).transpose(1, 2)
                 #print(np.array(spec).shape)
                 features.append(spec)
