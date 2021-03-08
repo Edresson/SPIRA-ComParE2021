@@ -16,12 +16,15 @@ from utils.generic_utils import NoamLR, binary_acc
 
 from utils.generic_utils import save_best_checkpoint
 
+from utils.radam import RAdam
+
 from utils.tensorboard import TensorboardWriter
 
 from utils.dataset import train_dataloader, eval_dataloader
 
 from models.spiraconv import *
 from utils.audio_processor import AudioProcessor 
+
 
 def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda, loss1_weight=1):
     model.zero_grad()
@@ -115,19 +118,41 @@ def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda, lo
     model.train()
     return loss_final
 
-def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, c, model_name, ap, cuda=True):
+def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, c, model_name, ap, cuda=True, model_params=None):
     loss1_weight = c.train_config['loss1_weight']
 
     if(model_name == 'spiraconv_v1'):
         model = SpiraConvV1(c)
     elif (model_name == 'spiraconv_v2'):
         model = SpiraConvV2(c)
+    elif (model_name == 'spiraconv_v3'):
+        if not model_params:
+            model = SpiraConvV3(c)
+        else:
+            model = SpiraConvV3(**model_params)
+    
+    elif (model_name == 'spiraconv_v4'):
+        if not model_params:
+            model = SpiraConvV4(c)
+        else:
+            model = SpiraConvV4(**model_params)
+    elif (model_name == 'spiraconvlstm_v1'):
+        model = SpiraConvLSTMV1(c)
+
+    elif (model_name == 'spiraconvattn_v1'):
+            model = SpiraConvAttnV1(c)
+
     elif (model_name == 'vit_v1'):
         model = SpiraVITv1(c)
     elif (model_name == 'vit_v2'):
         model = SpiraVITv2(c)
     elif (model_name == 'spt_v1'):
         model = SpiraSpTv1(c)
+    elif (model_name == 'spt_v2'):
+        if not model_params:
+            model = SpiraSpTv2(c)
+        else:
+            model = SpiraSpTv2(**model_params)
     #elif(model_name == 'voicesplit'):
     else:
         raise Exception(" The model '"+model_name+"' is not suported")
@@ -135,6 +160,11 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
     if c.train_config['optimizer'] == 'adam':
         optimizer = torch.optim.Adam(model.parameters(),
                                      lr=c.train_config['learning_rate'], weight_decay=c.train_config['weight_decay'])
+    elif c.train_config['optimizer'] == 'adamw':
+        optimizer = torch.optim.AdamW(model.parameters(),
+                                        lr=c.train_config['learning_rate'], weight_decay=c.train_config['weight_decay'])
+    elif c.train_config['optimizer'] == 'radam': 
+        optimizer = RAdam(model.parameters(), lr=c.train_config['learning_rate'], weight_decay=c.train_config['weight_decay'])
     else:
         raise Exception("The %s  not is a optimizer supported" % c.train['optimizer'])
 
@@ -247,6 +277,8 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
             if early_epochs is not None:
                 if early_epochs >= c.train_config['early_stop_epochs']:
                     break # stop train
+    return best_loss
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-c', '--config_path', type=str, required=True,

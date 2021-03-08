@@ -139,20 +139,24 @@ def run_test(args, checkpoint_path, testloader, c, model_name, ap, cuda=True):
         model = SpiraConvV1(c)
     elif (model_name == 'spiraconv_v2'):
         model = SpiraConvV2(c)
+    elif (model_name == 'spiraconv_v3'):
+        model = SpiraConvV3(c)
     elif (model_name == 'vit_v1'):
         model = SpiraVITv1(c)
     elif (model_name == 'vit_v2'):
         model = SpiraVITv2(c)
     elif (model_name == 'spt_v1'):
         model = SpiraSpTv1(c)
+    elif (model_name == 'spt_v2'):
+        model = SpiraSpTv1(c)
+    elif (model_name == 'spiraconvlstm_v1'):
+        model = SpiraConvLSTMV1(c)
+    elif (model_name == 'spiraconv_v4'):
+        model = SpiraConvV4(c)
+    elif (model_name == 'spiraconvattn_v1'):
+            model = SpiraConvAttnV1(c)
     else:
         raise Exception(" The model '"+model_name+"' is not suported")
-
-    if c.train_config['optimizer'] == 'adam':
-        optimizer = torch.optim.Adam(model.parameters(),
-                                     lr=c.train_config['learning_rate'])
-    else:
-        raise Exception("The %s  not is a optimizer supported" % c.train['optimizer'])
 
     step = 0
     if checkpoint_path is not None:

@@ -13,5 +13,17 @@ exp12 - exp  exp7 com ["noise", "speech", "music"]
 exp13 - exp  exp7 com ["noise", "music"] ---> bom melhor transformer ate agr 0.64
 exp14 - exp  exp7 com ["noise"]
 exp15 -  exp8 com transfer learning do modelo de tosse ---> bom 0.7
-exp16 - exp 8 com dados removidos os silencios
-
+exp16 - exp 8 com dados removidos os silencios 
+exp22 - exp 8 com denoiser
+exp23 - exp 8  só com os ruidos do denoiser - 0.73
+exp24 - exp 7 com denoiser
+exp25 - exp 7  só com os ruidos do denoiser
+exp26 - conv+LSTM só com os ruidos do denoiser
+exp27 - conv+LSTM  with overlapping só com os ruidos do denoiser
+exp28 - conv+attention só com os ruidos do denoiser
+exp29 - exp 23 com melspectrogram
+exp30 - exp 23 com spectrogram
+exp31 - exp 23  test topologias
+exp32 - exp 23  com wadam
+exp33 - exp8 test topologias
+exp34 - melhor do exp 31
