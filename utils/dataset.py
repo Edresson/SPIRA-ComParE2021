@@ -75,8 +75,8 @@ class Dataset(Dataset):
         torch.manual_seed(c['seed'])
         torch.cuda.manual_seed(c['seed'])
         np.random.seed(c['seed'])
-        # torch.backends.cudnn.deterministic = True
-        # torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
         self.c = c
         self.ap = ap
         self.train = train
@@ -135,7 +135,8 @@ class Dataset(Dataset):
         return self.max_seq_len
 
     def __getitem__(self, idx):
-        wav = self.ap.load_wav(os.path.join(self.dataset_root, self.dataset_list[idx][0]))
+        wavfile_name = self.dataset_list[idx][0]
+        wav = self.ap.load_wav(os.path.join(self.dataset_root, wavfile_name))
         #print("FILE:", os.path.join(self.dataset_root, self.dataset_list[idx][0]), wav.shape)
         class_name = self.dataset_list[idx][1]
         # print('class before transform', class_name)
@@ -193,7 +194,8 @@ class Dataset(Dataset):
                 target = torch.FloatTensor([class_name])                
             else: # avgpoling
                 target = torch.FloatTensor([class_name])
-
+        if self.test:
+            return feature, target, wavfile_name
         return feature, target
 
     def __len__(self):
@@ -235,7 +237,7 @@ def train_dataloader(c, ap, class_balancer_batch=False):
 
 def eval_dataloader(c, ap, max_seq_len=None):
     return DataLoader(dataset=Dataset(c, ap, train=False, max_seq_len=max_seq_len),
-                          collate_fn=teste_collate_fn, batch_size=c.test_config['batch_size'], 
+                          collate_fn=val_collate_fn, batch_size=c.test_config['batch_size'], 
                           shuffle=False, num_workers=c.test_config['num_workers'])
 
 
@@ -273,7 +275,7 @@ def own_collate_fn(batch):
     return features, targets
 
 
-def teste_collate_fn(batch):
+def val_collate_fn(batch):
     features = []
     targets = []
     slices = []
@@ -312,3 +314,46 @@ def teste_collate_fn(batch):
     #features = stack(features, dim=0)
     #print(features.shape, targets.shape)
     return features, targets, slices, targets_org
+
+
+def teste_collate_fn(batch):
+    features = []
+    targets = []
+    slices = []
+    targets_org = []
+    names = []
+    for feature, target, file_name in batch:
+        features.append(feature)
+        targets.append(target)
+        names.append(file_name)
+        if len(feature.shape) == 3:
+            slices.append(torch.tensor(feature.shape[0]))
+            # its used for integrity check during unpack overlapping for calculation loss and accuracy
+            targets_org.append(target[0])
+    
+    if len(features[0].shape) == 3: # if dim is 3, we have a many specs because we use a overlapping
+        targets = torch.cat(targets, dim=0)
+        features = torch.cat(features, dim=0)
+    elif len(features[0].shape) == 4: # if dim = 4 is speech transformer mode
+        features = pad_sequence(features, batch_first=True, padding_value=0).squeeze(2)
+        targets = torch.cat(targets, dim=0)
+    else:    
+        # padding with zeros timestamp dim
+        features = pad_sequence(features, batch_first=True, padding_value=0)
+        # its padding with zeros but mybe its a problem because 
+        targets = pad_sequence(targets, batch_first=True, padding_value=0)
+
+    # 
+    targets = targets.reshape(targets.size(0), -1)
+
+    if slices:
+        slices = stack(slices, dim=0)
+        targets_org = stack(targets_org, dim=0)
+    else:
+        slices = None
+        targets_org = None
+    # list to tensor
+    #targets = stack(targets, dim=0)
+    #features = stack(features, dim=0)
+    #print(features.shape, targets.shape)
+    return features, targets, slices, targets_org, names

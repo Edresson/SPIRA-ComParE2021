@@ -32,7 +32,7 @@ random.seed(42)
 torch.manual_seed(42)
 torch.cuda.manual_seed(42)
 np.random.seed(42)
-def test(criterion, ap, model, c, testloader, step,  cuda, confusion_matrix=False):
+def test(criterion, ap, model, c, testloader, step,  cuda, confusion_matrix=False, debug=False):
     losses = []
     accs = []
     model.zero_grad()
@@ -43,8 +43,9 @@ def test(criterion, ap, model, c, testloader, step,  cuda, confusion_matrix=Fals
     acc = 0
     preds = []
     targets = []
+    names = []
     with torch.no_grad():
-        for feature, target, slices, targets_org in testloader:       
+        for feature, target, slices, targets_org, name in testloader:       
             #try:
             if cuda:
                 feature = feature.cuda()
@@ -87,24 +88,46 @@ def test(criterion, ap, model, c, testloader, step,  cuda, confusion_matrix=Fals
             loss_control += criterion(output[idxs], target[idxs]).item()
             idxs = (target == c.dataset['patient_class'])
             loss_patient += criterion(output[idxs], target[idxs]).item()
+            
 
             # calculate binnary accuracy
             y_pred_tag = torch.round(output)
             acc += (y_pred_tag == target).float().sum().item()
             preds += y_pred_tag.reshape(-1).int().cpu().numpy().tolist()
             targets += target.reshape(-1).int().cpu().numpy().tolist()
+            names += name
 
         targets = np.array(targets)
         preds = np.array(preds)
-
+        names = np.array(names)
         idxs = np.nonzero(targets == c.dataset['control_class'])
         control_target = targets[idxs]
         control_preds = preds[idxs]
+        names_control = names[idxs]
+
         idxs = np.nonzero(targets == c.dataset['patient_class'])
         
         patient_target = targets[idxs]
         patient_preds = preds[idxs]
-        
+        names_patient = names[idxs]
+
+        if debug:
+            print('+'*40)
+            print("Control Files Classified incorrectly:")
+            incorrect_ids = np.nonzero(control_preds != c.dataset['control_class'])
+            inc_names = names_control[incorrect_ids]
+            print("Num. Files:", len(inc_names))
+            print(inc_names)
+            print('+'*40)
+            print('-'*40)
+            print("Patient Files Classified incorrectly:")
+            incorrect_ids = np.nonzero(patient_preds != c.dataset['patient_class'])
+            inc_names = names_patient[incorrect_ids]
+            print("Num. Files:", len(inc_names))
+            print(inc_names)
+            print('-'*40)
+
+
         acc_control = (control_preds == control_target).mean()
         acc_patient = (patient_preds == patient_target).mean()
         acc_balanced = (acc_control + acc_patient) / 2
@@ -131,7 +154,7 @@ def test(criterion, ap, model, c, testloader, step,  cuda, confusion_matrix=Fals
     return mean_acc
 
 
-def run_test(args, checkpoint_path, testloader, c, model_name, ap, cuda=True):
+def run_test(args, checkpoint_path, testloader, c, model_name, ap, cuda=True, debug=False):
 
     # define loss function
     criterion = nn.BCELoss(reduction='sum')
@@ -176,7 +199,7 @@ def run_test(args, checkpoint_path, testloader, c, model_name, ap, cuda=True):
         model = model.cuda()
 
     model.train(False)
-    test_acc = test(criterion, ap, model, c, testloader, step, cuda=cuda, confusion_matrix=True)
+    test_acc = test(criterion, ap, model, c, testloader, step, cuda=cuda, confusion_matrix=True, debug=debug)
         
 
 if __name__ == '__main__':
@@ -201,6 +224,8 @@ if __name__ == '__main__':
                         help="Number of Noise for insert in control")
     parser.add_argument('--num_noise_patient', type=int, default=0,
                         help="Number of Noise for insert in patient")
+    parser.add_argument('--debug', type=bool, default=True,
+                        help=" Print classification error")
                         
     args = parser.parse_args()
 
@@ -228,4 +253,4 @@ if __name__ == '__main__':
 
     test_dataloader = test_dataloader(c, ap, max_seq_len=max_seq_len)
 
-    run_test(args, args.checkpoint_path, test_dataloader, c, c.model_name, ap, cuda=True)
+    run_test(args, args.checkpoint_path, test_dataloader, c, c.model_name, ap, cuda=True, debug=args.debug)

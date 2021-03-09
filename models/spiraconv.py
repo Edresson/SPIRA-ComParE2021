@@ -399,7 +399,7 @@ class SpiraConvV4(nn.Module):
 
         self.conv = nn.Sequential(*convs)
 
-        if self.temporal_control == 'padding':
+        if self.temporal_control == 'padding' or self.temporal_control == 'overlapping':
             # its very useful because if you change the convlutional arquiture the model calculate its, and you dont need change this :)
             # I prefer activate the network in toy example because is more easy than calculate the conv output
             # get zeros input
@@ -409,11 +409,6 @@ class SpiraConvV4(nn.Module):
             # set fully connected input dim 
             fc1_input_dim = toy_activation_shape[1]*toy_activation_shape[2]*toy_activation_shape[3]
             self.fc1 = nn.Linear(fc1_input_dim, self.config.model['fc1_dim'])
-        elif self.temporal_control == 'overlapping':
-            # dinamic calculation num_feature, its useful if you use maxpooling or other pooling in feature dim, and this model dont break
-            inp = torch.zeros(1, 1, 500 ,self.num_feature)
-            # get out shape 
-            self.fc1 = nn.Linear(4*self.conv(inp).shape[-1], self.config.model['fc1_dim'])
         elif self.temporal_control == 'avgpool': # avgpool
             pool_size = int(self.config.model['fc1_dim']/2)
             self.avg_pool = nn.AdaptiveAvgPool2d((pool_size, self.num_feature))
@@ -456,7 +451,7 @@ class SpiraConvV4(nn.Module):
 
 class SpiraConvV2(nn.Module):
     ''' Is the same than V1 but we change batchnorm to Group Norm'''
-    def __init__(self, config, conv_num=4):
+    def __init__(self, config):
         super(SpiraConvV2, self).__init__()
         self.config = config
         self.audio = self.config['audio']
@@ -545,6 +540,7 @@ class SpiraConvV2(nn.Module):
         x = torch.sigmoid(x)
         #print(x.shape)
         return x
+
 
 
 class SpiraSpTv2(nn.Module):

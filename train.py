@@ -13,8 +13,9 @@ from utils.generic_utils import load_config, save_config_file
 from utils.generic_utils import set_init_dict
 
 from utils.generic_utils import NoamLR, binary_acc
-
 from utils.generic_utils import save_best_checkpoint
+# mixup
+from utils.generic_utils import do_mixup, Mixup, Clip_NLL, Clip_BCE
 
 from utils.radam import RAdam
 
@@ -25,6 +26,7 @@ from utils.dataset import train_dataloader, eval_dataloader
 from models.spiraconv import *
 from utils.audio_processor import AudioProcessor 
 
+from models.panns import Transfer_Cnn14
 
 def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda, loss1_weight=1):
     model.zero_grad()
@@ -119,8 +121,14 @@ def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda, lo
     return loss_final
 
 def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, c, model_name, ap, cuda=True, model_params=None):
+    # adicionar do mixeup+: https://github.com/qiuqiangkong/panns_transfer_to_gtzan/blob/master/pytorch/main.py
     loss1_weight = c.train_config['loss1_weight']
-
+    use_mixup = False if 'mixup' not in c.model else c.model['mixup']
+    if use_mixup:
+        mixup_alpha = 1 if 'mixup_alpha' not in c.model else c.model['mixup_alpha']
+        mixup_augmenter = Mixup(mixup_alpha=mixup_alpha)
+        print("Enable Mixup with alpha:", mixup_alpha)
+    
     if(model_name == 'spiraconv_v1'):
         model = SpiraConvV1(c)
     elif (model_name == 'spiraconv_v2'):
@@ -153,7 +161,8 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
             model = SpiraSpTv2(c)
         else:
             model = SpiraSpTv2(**model_params)
-    #elif(model_name == 'voicesplit'):
+    elif(model_name == 'panns'):
+        model = Transfer_Cnn14(c)
     else:
         raise Exception(" The model '"+model_name+"' is not suported")
 
@@ -163,7 +172,7 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
     elif c.train_config['optimizer'] == 'adamw':
         optimizer = torch.optim.AdamW(model.parameters(),
                                         lr=c.train_config['learning_rate'], weight_decay=c.train_config['weight_decay'])
-    elif c.train_config['optimizer'] == 'radam': 
+    elif c.train_config['optimizer'] == 'radam':
         optimizer = RAdam(model.parameters(), lr=c.train_config['learning_rate'], weight_decay=c.train_config['weight_decay'])
     else:
         raise Exception("The %s  not is a optimizer supported" % c.train['optimizer'])
@@ -202,7 +211,11 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
         # optimizer = optimizer.cuda()
 
     # define loss function
-    criterion = nn.BCELoss()
+    if use_mixup:
+        # criterion = Clip_NLL()
+         criterion = Clip_BCE()
+    else:
+        criterion = nn.BCELoss()
     eval_criterion = nn.BCELoss(reduction='sum')
 
     best_loss = float('inf')
@@ -214,13 +227,20 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
     model.train()
     for epoch in range(c.train_config['epochs']):
         for feature, target in trainloader:
+
                 if cuda:
                     feature = feature.cuda()
                     target = target.cuda()
-
-                output = model(feature)
+                if use_mixup:
+                    # print("Usando mixup")
+                    mixup_lambda = torch.FloatTensor(mixup_augmenter.get_lambda(len(feature))).to(feature.device)
+                    output = model(feature, mixup_lambda)
+                    target = do_mixup(target, mixup_lambda)
+                    # print(target)
+                else:
+                    output = model(feature)
                 # Calculate loss
-                if c.dataset['class_balancer_batch']:
+                if c.dataset['class_balancer_batch'] and not use_mixup:
                     idxs = (target == c.dataset['control_class'])
                     loss_control = criterion(output[idxs], target[idxs])
                     idxs = (target == c.dataset['patient_class'])
@@ -248,7 +268,7 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
                 # write loss to tensorboard
                 if step % c.train_config['summary_interval'] == 0:
                     tensorboard.log_training(loss, step)
-                    if c.dataset['class_balancer_batch']:
+                    if c.dataset['class_balancer_batch'] and not use_mixup:
                         print("Write summary at step %d" % step, ' Loss: ', loss, 'Loss control:', loss_control.item(), 'Loss patient:', loss_patient.item())
                     else:
                         print("Write summary at step %d" % step, ' Loss: ', loss)
