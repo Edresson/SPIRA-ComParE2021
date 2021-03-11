@@ -14,17 +14,20 @@ from utils.generic_utils import set_init_dict
 
 from utils.generic_utils import NoamLR, binary_acc
 
-from utils.generic_utils import save_best_checkpoint
+from utils.generic_utils import save_best_checkpoint, copy_config_dict
 
 from utils.tensorboard import TensorboardWriter
 
 from utils.dataset import train_dataloader, eval_dataloader
 
 from models.spiraconv import *
+from models.panns import *
+
 from utils.audio_processor import AudioProcessor 
 
 from train import train
 import sys, os
+import copy
 
 # Disable
 def blockPrint():
@@ -35,7 +38,7 @@ def enablePrint():
     sys.stdout = sys.__stdout__
 
 
-def run_train(c, args, model_params):
+def run_train(c, args, model_params=None):
 
         ap = AudioProcessor(**c.audio)
         
@@ -74,23 +77,19 @@ if __name__ == '__main__':
     c = load_config(args.config_path)
     current_path = c.train_config['logs_path']
 
-    
+    betas = [1, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]    
 
-    kernels = [(7,1), (5, 1), (3, 1), (2, 1), (3, 3)]
-    dilatation = [ (1, 1), (2,1), (3,1), (4,1)]
+    optimizer = ["adam", "adamw", "radam"]
 
-    fc1_dim = [10, 30, 50, 100, 150, 300, 500, 1000]
+    weight_decay = [0, 0.1, 0.01, 0.001, 0.0001, 0.00001]
 
-    num_layers = [6, 2, 3, 4, 5]
+    learning_rate = [1e-3, 1e-2, 1e-4, 1e-5, 1e-6]
 
-    dropout_rates = [0.2, 0.4, 0.7, 0.8, 0.9]
-    
-
-
-    runs = 0 
+    runs = 0
 
 
     c = load_config(args.config_path)
+
     min_loss = 999999
 
     current_path = c.train_config['logs_path']
@@ -99,125 +98,79 @@ if __name__ == '__main__':
     print("="*20)  
     blockPrint()
 
-    best_params = {'config':c, 'dropout_rate':0.7, 'conv_num':4, 'kernels':(3,1), 'dilatation': (2,1)}
 
     blockPrint()
-
     enablePrint()
-    print("\n\nStart search: num_layers ")
+    print("\n\nStart search: betas ")
     blockPrint()
-
-    for p in num_layers:
+    for p in betas:
         c.train_config['logs_path'] = current_path+'-'+str(runs)
-        temp_parms =  best_params.copy()
-        temp_parms['conv_num'] = p
-        loss = run_train(c, args, temp_parms)
+        c_aux = copy_config_dict(c)
+        c_aux.model['mixup_alpha'] = p
+        loss = run_train(c_aux, args)
         if loss < min_loss:
-            best_params = temp_parms.copy()
+            c = copy_config_dict(c_aux)
             min_loss = loss
             enablePrint()
             print("="*20)
             print("RUN: ", runs)
             print( "BEST LOSS: ", min_loss)
-            print( "Params: ", best_params)
+            print( "Params: ", c)
             print("="*20)
             blockPrint()
-            bests.append([min_loss, best_params, runs])
+            bests.append([min_loss, c, runs])
         runs+= 1
-        print(runs)
+        print("RUN:",runs)
+
     enablePrint()
-    print("\n\nStart search: kernels ")
+    print("\n\nStart search: optimizer ")
     blockPrint()
+    for p in optimizer:
+        for w in weight_decay:
+            c.train_config['logs_path'] = current_path+'-'+str(runs)
+            c_aux = copy_config_dict(c)
+            c_aux.train_config['weight_decay'] = w
+            c_aux.train_config['optimizer'] = p
+            loss = run_train(c_aux, args)
+            if loss < min_loss:
+                c = copy_config_dict(c_aux)
+                min_loss = loss
+                enablePrint()
+                print("="*20)
+                print("RUN: ", runs)
+                print( "BEST LOSS: ", min_loss)
+                print( "Params: ", c)
+                print("="*20)
+                blockPrint()
+                bests.append([min_loss, c, runs])
+            runs+= 1
+            print("RUN:",runs)
 
-
-    for p in kernels:
+    enablePrint()
+    print("\n\nStart search: learning_rate ")
+    blockPrint()
+    for p in learning_rate:
         c.train_config['logs_path'] = current_path+'-'+str(runs)
-        temp_parms =  best_params.copy()
-        temp_parms['kernels'] = p
-        loss = run_train(c, args, temp_parms)
+        c_aux = copy_config_dict(c)
+        c_aux.train_config['learning_rate'] = p
+        loss = run_train(c_aux, args)
         if loss < min_loss:
-            best_params = temp_parms.copy()
+            c = copy_config_dict(c_aux)
             min_loss = loss
             enablePrint()
             print("="*20)
             print("RUN: ", runs)
             print( "BEST LOSS: ", min_loss)
-            print( "Params: ", best_params)
+            print( "Params: ", c)
             print("="*20)
             blockPrint()
-            bests.append([min_loss, best_params, runs])
+            bests.append([min_loss, c, runs])
         runs+= 1
-        
-    enablePrint()
-    print("\n\nStart search: dropout_rates ")
-    blockPrint()
-    for p in dropout_rates:
-        c.train_config['logs_path'] = current_path+'-'+str(runs)
-        temp_parms =  best_params.copy()
-        temp_parms['dropout_rate'] = p
-        loss = run_train(c, args, temp_parms)
-        if loss < min_loss:
-            best_params = temp_parms.copy()
-            min_loss = loss
-            enablePrint()
-            print("="*20)
-            print("RUN: ", runs)
-            print( "BEST LOSS: ", min_loss)
-            print( "Params: ", best_params)
-            print("="*20)
-            blockPrint()
-            bests.append([min_loss, best_params, runs])
-        runs+= 1
-
-    enablePrint()
-
-
-
-    print("\n\nStart search: dilatation ")
-    blockPrint()
-    for p in dilatation:
-        c.train_config['logs_path'] = current_path+'-'+str(runs)
-        temp_parms =  best_params.copy()
-        temp_parms['dilatation'] = p
-        loss = run_train(c, args, temp_parms)
-        if loss < min_loss:
-            best_params = temp_parms.copy()
-            min_loss = loss
-            enablePrint()
-            print("="*20)
-            print("RUN: ", runs)
-            print( "BEST LOSS: ", min_loss)
-            print( "Params: ", best_params)
-            print("="*20)
-            blockPrint()
-            bests.append([min_loss, best_params, runs])
-        runs+= 1
-
-    enablePrint()
-    print("\n\nStart search: config.model['fc1_dim'] ")
-    blockPrint()
-    for p in fc1_dim:
-        c.train_config['logs_path'] = current_path+'-'+str(runs)
-        c.model['fc1_dim'] = p
-
-        temp_parms =  best_params.copy()
-        temp_parms['config'] = c
-        loss = run_train(c, args, temp_parms)
-        if loss < min_loss:
-            best_params = temp_parms.copy()
-            min_loss = loss
-            enablePrint()
-            print("="*20)
-            print("RUN: ", runs)
-            print( "BEST LOSS: ", min_loss)
-            print( "Params: ", best_params)
-            print("="*20)
-            blockPrint()
-            bests.append([min_loss, best_params, runs])
-        runs+= 1
+        print("RUN:",runs)
+    
 
 enablePrint()
 print("="*30, 'FINAL', "="*30)
 print(bests)
 print( "BEST LOSS: ", min_loss)
-print( "Params: ", best_params)
+print( "Params: ", c)

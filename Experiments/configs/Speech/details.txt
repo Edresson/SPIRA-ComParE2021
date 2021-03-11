@@ -26,13 +26,27 @@ exp30 - exp 23 com spectrogram
 exp31 - exp 23  test topologias
 exp32 - exp 23  com wadam
 exp33 - exp8 test topologias
-exp34 - melhor do exp 31
 exp35 - exp16 test topologias
 exp36- exp 11 ( inserçãqo de ruidos) test topologias
 exp37 - wav_normalized + overlapping 3 e 1 step test topologias
 exp38 - exp 36 with overlapping 3 e 1 step test topologias
 exp39 - panns with noise data augmentation - com nossa loss
 exp40 - panns com noise data augmentation overleapping 3 e 3 - com nossa loss
-exp 41 - panns with noise data augmentation + mixup - ACC: 73
-exp42 - exp41 sem noise data augmentation com só ruidos + mixup
-exp43 - exp 41 test mixup alpha
+
+exp 41 - panns with noise data augmentation + mixup --> 0.7505
+exp42 - exp41 sem noise data augmentation com só ruidos + mixup --> 0.6062
+exp43 - exp 41 test mixup alpha --> 0.6952
+
+exp50 - melhor topologia exp 31 - spirav2 MFCC com nosso weight loss1 com so_noise --> 0.6451
+exp51 - melhor topologia exp 33 - spirav2 MFCC com nosso weight loss1 com wav_normalized --> 0.7171 # rerodar com novo melhor modelo
+exp52 - melhor topologia exp 36 - spirav2 MFCC com nosso weight loss1 com wav_normalized + inserção de ruidos  ["noise"] --> 0.6897 # rerodar com novo melhor modelo
+
+exp53 - panns search
+
+exp54 - exp exp51 com mixup --> 0.6535
+exp 55 - exp 54 + noise data augmentation --> 0.7083
+
+
+exp56 - melhor modelo transformer com noise e mixup + noise data augmentation --> 0.5544
+
+exp57 - melhor modelo transformer com noise e mixup  --> 0.5677

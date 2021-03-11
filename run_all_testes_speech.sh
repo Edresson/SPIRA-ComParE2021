@@ -163,6 +163,7 @@ python test.py --test_csv ../Speech/dist/lab/devel.csv -r ../Speech/dist/wav_so-
 
 echo "========================================================="
 
+# python test.py --test_csv ../Speech/dist/lab/devel.csv -r ../Speech/dist/wav_normalized --checkpoint_path ../Speech/Checkpoints/Experiment-33-all-testes/-25/*/best_checkpoint.pt --config_path ../Speech/Checkpoints/Experiment-33-all-testes/-25/*/config.json  --batch_size 16 --num_workers 2 
 
 MULTILINE-COMMENT
 

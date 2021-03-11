@@ -108,7 +108,7 @@ if __name__ == '__main__':
     enablePrint()
     print("\n\nStart search: kernel_sizes ")
     blockPrint()
-    '''
+
     for p in kernel_sizes:
         c.train_config['logs_path'] = current_path+'-'+str(runs)
         temp_parms = best_params.copy()
@@ -151,7 +151,7 @@ if __name__ == '__main__':
             bests.append([min_loss, best_params, runs])
         runs+= 1
         
-        '''
+    
     enablePrint()
     print("\n\nStart search: config.model['fc1_dim'] ")
     blockPrint()

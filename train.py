@@ -236,6 +236,7 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
                     mixup_lambda = torch.FloatTensor(mixup_augmenter.get_lambda(len(feature))).to(feature.device)
                     output = model(feature, mixup_lambda)
                     target = do_mixup(target, mixup_lambda)
+                    # print(output.shape, target.shape)
                     # print(target)
                 else:
                     output = model(feature)
