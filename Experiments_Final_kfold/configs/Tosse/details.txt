@@ -1,0 +1,4 @@
+exp1 - melhor topologia spirav2 MFCC com weight loss1 padding by max lenght - no data augmentation-  --> 
+exp2 - melhor modelo CNN14 --> 
+exp3 - melhor Resnet38 --> 
+exp4- melhor MobileNetv1 --> 

@@ -1,0 +1,32 @@
+exp1 - without class batch balancer, without overlapping, model:spiraconv_v2
+exp2 - with class batch balancer, without overlapping, model:spiraconv_v2
+exp3 - without class batch balancer, with overlapping, model:spiraconv_v2
+exp4 - with class batch balancer, with overlapping, model:spiraconv_v2
+exp5 - exp2 with weight_decay=0
+
+exp53 - panns CONV14 search best params.
+
+exp63 - panns Resnet38  search best params.
+
+exp65 - panns MobileNetv1  search best params.
+
+
+exp66 - melhor modelo do exp53 (Conv14) -->  0.6919 (loss 0.5636)
+
+exp67 - melhor modelo do exp63 (Resnet38) - 0.6627 (loss 0.5701)
+exp68 - melhor modelo do exp65 (MobileNetv1) -  0.6748 ( loss: 0.6284)
+
+
+exp33 - SPIRA search best params.
+exp34- best 33 -->  0.6432 (loss: 0.6386)
+
+# fazer o teste e verificar se ficou melhor que o anterior.
+
+exp73 - panns CONV14 search best params without noise_insersion  
+exp74- best 73 -->  0.7327 ( loss: 0.5571)
+exp75 - panns Resnet38  search best params  without noise_insersion  
+exp76- best 75 --> 0.6507 (loos: 0.5920)
+exx77 - panns MobileNetv1  search best params without noise_insersion  
+exp78- best 77 -->  0.6109 (loss: 0.6036)
+
+exp80 - exp66 com overlapping

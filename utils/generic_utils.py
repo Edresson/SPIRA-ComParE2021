@@ -15,8 +15,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-
-
 class Mixup(object):
     def __init__(self, mixup_alpha, random_seed=1234):
         """Mixup coefficient generator.
@@ -39,6 +37,20 @@ class Mixup(object):
 
         return np.array(mixup_lambdas)
 
+def do_mixup(x, mixup_lambda):
+    """Mixup x of even indexes (0, 2, 4, ...) with x of odd indexes 
+    (1, 3, 5, ...).
+    Args:
+      x: (batch_size * 2, ...)
+      mixup_lambda: (batch_size * 2,)
+    Returns:
+      out: (batch_size, ...)
+    """
+    out = (x[0 :: 2].transpose(0, -1) * mixup_lambda[0 :: 2] + \
+        x[1 :: 2].transpose(0, -1) * mixup_lambda[1 :: 2]).transpose(0, -1)
+    return out
+
+
 class DropStripes(nn.Module):
     def __init__(self, dim, drop_width, stripes_num):
         """Drop stripes. 
@@ -55,12 +67,12 @@ class DropStripes(nn.Module):
         self.drop_width = drop_width
         self.stripes_num = stripes_num
 
-    def forward(self, input):
+    def forward(self, input, test=False):
         """input: (batch_size, channels, time_steps, freq_bins)"""
 
         assert input.ndimension() == 4
 
-        if self.training is False:
+        if self.training is False and not test :
             return input
 
         else:
@@ -85,30 +97,7 @@ class DropStripes(nn.Module):
             elif self.dim == 3:
                 e[:, :, bgn : bgn + distance] = 0
 
-class Clip_NLL(nn.Module):
-    def __init__(self):
-        super(Clip_NLL, self).__init__()
-    def forward(self, output, target):
-        return - torch.mean(target * output)
 
-class Clip_BCE(nn.Module):
-    def __init__(self):
-        super(Clip_BCE, self).__init__()
-    def forward(self, output, target):
-        return F.binary_cross_entropy(output, target)
-
-def do_mixup(x, mixup_lambda):
-    """Mixup x of even indexes (0, 2, 4, ...) with x of odd indexes 
-    (1, 3, 5, ...).
-    Args:
-      x: (batch_size * 2, ...)
-      mixup_lambda: (batch_size * 2,)
-    Returns:
-      out: (batch_size, ...)
-    """
-    out = (x[0 :: 2].transpose(0, -1) * mixup_lambda[0 :: 2] + \
-        x[1 :: 2].transpose(0, -1) * mixup_lambda[1 :: 2]).transpose(0, -1)
-    return out
 
 class SpecAugmentation(nn.Module):
     # Credits: https://github.com/qiuqiangkong/torchlibrosa/
@@ -133,12 +122,22 @@ class SpecAugmentation(nn.Module):
         self.freq_dropper = DropStripes(dim=3, drop_width=freq_drop_width, 
             stripes_num=freq_stripes_num)
 
-    def forward(self, input):
-        x = self.time_dropper(input)
-        x = self.freq_dropper(x)
+    def forward(self, input, test=False):
+        x = self.time_dropper(input, test)
+        x = self.freq_dropper(x, test)
         return x
 
+class Clip_NLL(nn.Module):
+    def __init__(self):
+        super(Clip_NLL, self).__init__()
+    def forward(self, output, target):
+        return - torch.mean(target * output)
 
+class Clip_BCE(nn.Module):
+    def __init__(self):
+        super(Clip_BCE, self).__init__()
+    def forward(self, output, target):
+        return F.binary_cross_entropy(output, target)
 
 class AttrDict(dict):
     def __init__(self, *args, **kwargs):

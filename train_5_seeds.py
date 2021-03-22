@@ -41,12 +41,9 @@ def enablePrint():
 def run_train(c, args, model_params=None):
 
         ap = AudioProcessor(**c.audio)
-        
-        if args.seed is None:
-            log_path = os.path.join(c.train_config['logs_path'], c.model_name)
-        else:
-            log_path = os.path.join(os.path.join(c.train_config['logs_path'], str(args.seed)), c.model_name)
-            c.train_config['seed'] = args.seed
+
+        log_path = os.path.join(c.train_config['logs_path'], c.model_name)
+    
 
         os.makedirs(log_path, exist_ok=True)
 
@@ -82,10 +79,9 @@ if __name__ == '__main__':
     c = load_config(args.config_path)
 
     current_path = c.train_config['logs_path']
-    bests = [] 
-
     for s in seeds:
         c.train_config['logs_path'] = os.path.join(current_path, str(s))
+        c.train_config['seed'] = s
         loss = run_train(c, args)
         print('-'*30)
         print("SEED:",s, "Best Loss:", loss)

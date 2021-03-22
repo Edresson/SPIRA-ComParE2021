@@ -1,0 +1,6 @@
+
+exp1 - melhor topologia spirav2 MFCC com weight loss1 padding by max lenght - no data augmentation-  --> seed 42: 0.6432 (loss: 0.6386)
+exp2 - melhor modelo CNN14 --> seed 42:   0.7327 ( loss: 0.5571)
+exp3 - melhor Resnet38 --> seed 42: 0.6507 (loos: 0.5920)
+exp4- melhor MobileNetv1 --> seed 42: 0.6109 (loss: 0.6036)
+

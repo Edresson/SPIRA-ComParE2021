@@ -163,8 +163,9 @@ python test.py --test_csv ../Speech/dist/lab/devel.csv -r ../Speech/dist/wav_so-
 
 echo "========================================================="
 
-# python test.py --test_csv ../Speech/dist/lab/devel.csv -r ../Speech/dist/wav_normalized --checkpoint_path ../Speech/Checkpoints/Experiment-33-all-testes/-25/*/best_checkpoint.pt --config_path ../Speech/Checkpoints/Experiment-33-all-testes/-25/*/config.json  --batch_size 16 --num_workers 2 
+# python test.py --test_csv ../Speech/dist/lab/devel.csv -r ../Speech/dist/wav_normalized --checkpoint_path ../Speech/Checkpoints/Experiment-53-all-testes/-32/*/best_checkpoint.pt --config_path ../Speech/Checkpoints/Experiment-53-all-testes/-32/*/config.json  --batch_size 16 --num_workers 2 
 
+Experiment-53-all-testes/-32
 MULTILINE-COMMENT
 
 
@@ -177,3 +178,18 @@ echo "____________________EVALUATION____________________"
 python test.py --test_csv ../Speech/dist/lab/devel.csv -r ../Speech/dist/wav_so-denoise --checkpoint_path ../Speech/Checkpoints/Experiment-31/*/best_checkpoint.pt --config_path ../Speech/Checkpoints/Experiment-31/*/config.json  --batch_size 16 --num_workers 2 
 
 echo "========================================================="
+
+
+
+echo "==================== Experiment 58 ===================="
+echo "____________________Train____________________"
+python test.py --test_csv ../Speech/dist/lab/train.csv -r ../Speech/dist/wav_normalized --checkpoint_path ../Speech/Checkpoints/Experiment-58/*/best_checkpoint.pt --config_path ../Speech/Checkpoints/Experiment-58/*/config.json  --batch_size 16 --num_workers 2 
+
+echo "____________________EVALUATION____________________"
+# without noise
+python test.py --test_csv ../Speech/dist/lab/devel.csv -r ../Speech/dist/wav_normalized --checkpoint_path ../Speech/Checkpoints/Experiment-58/*/best_checkpoint.pt --config_path ../Speech/Checkpoints/Experiment-58/*/config.json  --batch_size 16 --num_workers 2 
+
+echo "========================================================="
+
+
+

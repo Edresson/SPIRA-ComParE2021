@@ -1,0 +1,5 @@
+
+exp1 - melhor topologia spirav2 MFCC com weight loss1 padding by max lenght --> F1: 0.7049 UAR: 0.7357
+exp2 - melhor modelo CNN14 --> F1: 0.7413  UAR: 0.7694
+exp3 - melhor Resnet38 -->  F1: 0.7640 UAR:0.7839
+exp4- melhor MobileNetv1 --> F1:0.7380 UAR:0.7573 

@@ -13,6 +13,8 @@ from scipy import signal
 import wavfile
 import glob
 
+from utils.generic_utils import SpecAugmentation
+
 class AugmentWAV(object):
     '''Credits: https://github.com/clovaai/voxceleb_trainer/blob/3bfd557fab5a3e6cd59d717f5029b3a20d22a281/DatasetLoader.py#L55'''
     def __init__(self, musan_path, noisetypes=['noise', 'speech', 'music']):
@@ -69,18 +71,22 @@ class Dataset(Dataset):
     """
     Class for load a train and test from dataset generate by import_librispeech.py and others
     """
-    def __init__(self, c, ap, train=True, max_seq_len=None, test=False):
+    def __init__(self, c, ap, train=True, max_seq_len=None, test=False, test_insert_noise=False, num_test_additive_noise=0, num_test_specaug=0):
         # set random seed
-        random.seed(c['seed'])
-        torch.manual_seed(c['seed'])
-        torch.cuda.manual_seed(c['seed'])
-        np.random.seed(c['seed'])
+        random.seed(c.train_config['seed'])
+        torch.manual_seed(c.train_config['seed'])
+        torch.cuda.manual_seed(c.train_config['seed'])
+        np.random.seed(c.train_config['seed'])
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
         self.c = c
         self.ap = ap
         self.train = train
         self.test = test
+        self.test_insert_noise = test_insert_noise
+        self.num_test_additive_noise = num_test_additive_noise
+        self.num_test_specaug = num_test_specaug
+
         self.dataset_csv = c.dataset['train_csv'] if train else c.dataset['eval_csv']
         self.dataset_root = c.dataset['train_data_root_path'] if train else c.dataset['eval_data_root_path']
         if test:
@@ -97,9 +103,7 @@ class Dataset(Dataset):
         self.patient_class = c.dataset['patient_class']
 
         # read csvs
-        self.dataset_list = pd.read_csv(self.dataset_csv, sep=',').replace({'negative': self.control_class}, regex=True).replace({'positive': self.patient_class}, regex=True).values
-        
-
+        self.dataset_list = pd.read_csv(self.dataset_csv, sep=',').replace({'?': -1}).replace({'negative': self.control_class}, regex=True).replace({'positive': self.patient_class}, regex=True).values
 
         # get max seq lenght for padding 
         if self.c.dataset['temporal_control'] == 'padding' and train and not self.c.dataset['max_seq_len']:
@@ -130,6 +134,16 @@ class Dataset(Dataset):
             self.augment_wav = AugmentWAV(self.c.data_aumentation['musan_path'], noisetypes=self.c.data_aumentation['noisetypes'])
         else:
             self.augment_wav = None
+
+        if self.test_insert_noise:
+            self.spec_augmenter = SpecAugmentation(time_drop_width=64, time_stripes_num=2, freq_drop_width=8, freq_stripes_num=2)
+            self.augment_wav = AugmentWAV(self.c.data_aumentation['musan_path'], noisetypes=self.c.data_aumentation['noisetypes'])
+            if not self.num_test_additive_noise and not self.num_test_specaug:
+                raise RuntimeError("ERROR: when  test_insert_noise is True, num_test_additive_noise or  num_test_specaug need to be > 0")
+            if self.c.dataset['temporal_control'] == 'overlapping' or self.c.dataset['temporal_control'] == 'speech_t':
+                raise RuntimeError("ERROR: Noise insertion in  'temporal_control' overlapping and  speech_t is not supported !! You need implement it !!")
+        else:
+            self.spec_augmenter = None
 
     def get_max_seq_lenght(self):
         return self.max_seq_len
@@ -194,6 +208,54 @@ class Dataset(Dataset):
                 target = torch.FloatTensor([class_name])                
             else: # avgpoling
                 target = torch.FloatTensor([class_name])
+        
+        if self.test_insert_noise and not self.c.dataset['temporal_control'] == 'overlapping' and not self.c.dataset['temporal_control'] == 'speech_t':
+            features = []
+            targets = []
+            feature = feature.unsqueeze(0)
+            target = target.unsqueeze(0)
+            features.append(feature)
+            targets.append(target)
+            for _ in range(self.num_test_additive_noise):
+                wav_noise = self.augment_wav.additive_noise(self.ap, wav)
+                feature = self.ap.get_feature_from_audio(wav_noise)
+                # transpose for (Batch_size, timestamp, n_features)
+                feature = feature.transpose(1, 2)
+                if self.c.dataset['temporal_control'] == 'padding':
+                    # padding for max sequence 
+                    zeros = torch.zeros(feature.size(0), self.max_seq_len - feature.size(1), feature.size(2))
+                    # append zeros before features
+                    feature = torch.cat([feature, zeros], 1)
+                # print(feature.shape)
+                features.append(feature)
+                targets.append(target)
+
+            # print(len(features))
+            feature = torch.cat(features, dim=0)
+            target = torch.cat(targets, dim=0)
+            
+            # print("Additive:", feature.shape, target.shape, self.max_seq_len)
+            if self.num_test_specaug:
+                features_aug = self.ap.get_feature_from_audio(wav)
+                # transpose for (Batch_size, timestamp, n_features)
+                features_aug = features_aug.transpose(1,2)
+                # repeat tensor because its more fast than simply append on a list
+                targets_aug = torch.FloatTensor([class_name]).repeat(self.num_test_specaug, 1)
+                features_aug = features_aug.repeat(self.num_test_specaug, 1, 1)
+                # apply spec augmentation in the features
+                features_aug = self.spec_augmenter(features_aug.unsqueeze(1), test=True).squeeze(1)
+                if self.c.dataset['temporal_control'] == 'padding':
+                    # padding for max sequence 
+                    zeros = torch.zeros(features_aug.size(0), self.max_seq_len - features_aug.size(1),features_aug.size(2))
+                    # append zeros before features
+                    features_aug = torch.cat([features_aug, zeros], 1)
+                # print("end..:", features_aug.shape, targets_aug.shape)
+                
+                # concate new features
+                feature = torch.cat([feature, features_aug], dim=0)
+                target = torch.cat([target, targets_aug], dim=0)
+                # target = torch.FloatTensor([class_name]).repeat(feature.size(0), 1)
+        # print("After Spec:", feature.shape, target.shape)    
         if self.test:
             return feature, target, wavfile_name
         return feature, target
@@ -241,8 +303,8 @@ def eval_dataloader(c, ap, max_seq_len=None):
                           shuffle=False, num_workers=c.test_config['num_workers'])
 
 
-def test_dataloader(c, ap, max_seq_len=None):
-    return DataLoader(dataset=Dataset(c, ap, train=False, test=True, max_seq_len=max_seq_len),
+def test_dataloader(c, ap, max_seq_len=None, insert_noise=False, num_additive_noise=0, num_specaug=0):
+    return DataLoader(dataset=Dataset(c, ap, train=False, test=True, max_seq_len=max_seq_len, test_insert_noise=insert_noise, num_test_additive_noise=num_additive_noise, num_test_specaug=num_specaug),
                           collate_fn=teste_collate_fn, batch_size=c.test_config['batch_size'], 
                           shuffle=False, num_workers=c.test_config['num_workers'])
 

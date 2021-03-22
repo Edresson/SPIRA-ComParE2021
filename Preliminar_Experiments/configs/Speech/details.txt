@@ -35,13 +35,44 @@ exp40 - panns com noise data augmentation overleapping 3 e 3 - com nossa loss
 
 exp 41 - panns with noise data augmentation + mixup --> 0.7505
 exp42 - exp41 sem noise data augmentation com só ruidos + mixup --> 0.6062
-exp43 - exp 41 test mixup alpha --> 0.6952
+exp43 - exp 41 test mixup alpha 0.1 --> 0.6952
+
+exp53 - panns CNN14 search
+
 
 exp50 - melhor topologia exp 31 - spirav2 MFCC com nosso weight loss1 com so_noise --> 0.6451
-exp51 - melhor topologia exp 33 - spirav2 MFCC com nosso weight loss1 com wav_normalized --> 0.7171 # rerodar com novo melhor modelo
-exp52 - melhor topologia exp 36 - spirav2 MFCC com nosso weight loss1 com wav_normalized + inserção de ruidos  ["noise"] --> 0.6897 # rerodar com novo melhor modelo
+exp51 - melhor topologia exp 33 - spirav2 MFCC com nosso weight loss1 com wav_normalized -->  0.72717 (loss: 0.5559)
+exp52 - melhor topologia exp 36 - spirav2 MFCC com nosso weight loss1 com wav_normalized + inserção de ruidos  ["noise"] --> 0.6897 
+exp58 - melhor topologia exp 53 - PANNS + mixup + SpecAugmentation +  inserção de ruidos  ["noise"] -->  F1: 0.7311827956989247 UAR: 0.7447758446101446 
+exp59 - exp58 com validação com loss balanceado apenas F1: 0.7537313432835822 UAR: 0.7739344564116727
+exp62 - test com Resnet38  UAR: 0.7523
+exp63 - ajuste de parametros Resnet38 .
+exp64 - test com MobileNetv1  UAR: 0.7404
+exp65 - ajuste de parametros MobileNetv1
 
-exp53 - panns search
+exp66 - panns Conv14 ajuste de parametros sem loss extra 
+
+
+
+exp67 - melhor modelo do exp63 (Resnet38)-  0.7618 ( loss: 0.51536)
+exp68 - melhor modelo do exp65 (MobileNetv1) -  0.7648 (loss: 0.5336)
+exp69 - melhor modelo do exp66 (Conv14) -  0.7261 ( loss: 0.5378)
+
+
+
+
+
+
+
+
+
+
+
+
+exp60 - exp59 com overlapping 3 por 3 --> 0.7407
+exp61 - exp59 com overlapping 3 por 1 -->  0.7452
+
+
 
 exp54 - exp exp51 com mixup --> 0.6535
 exp 55 - exp 54 + noise data augmentation --> 0.7083

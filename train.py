@@ -14,6 +14,7 @@ from utils.generic_utils import set_init_dict
 
 from utils.generic_utils import NoamLR, binary_acc
 from utils.generic_utils import save_best_checkpoint
+from utils.models import return_model
 # mixup
 from utils.generic_utils import do_mixup, Mixup, Clip_NLL, Clip_BCE
 
@@ -24,9 +25,10 @@ from utils.tensorboard import TensorboardWriter
 from utils.dataset import train_dataloader, eval_dataloader
 
 from models.spiraconv import *
+from models.panns import *
+
 from utils.audio_processor import AudioProcessor 
 
-from models.panns import Transfer_Cnn14
 
 def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda, loss1_weight=1):
     model.zero_grad()
@@ -108,8 +110,9 @@ def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda, lo
 
     loss_balanced = (loss_control + loss_patient) / 2 
     
-    loss_final = (loss1_weight*loss_balanced) + abs(loss_control - loss_patient)/2
-    
+    # loss_final = (loss1_weight*loss_balanced) + abs(loss_control - loss_patient)/2
+    loss_final = loss_balanced
+
     mean_acc = acc / len(testloader.dataset)
     mean_loss = loss / len(testloader.dataset)
 
@@ -121,7 +124,6 @@ def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda, lo
     return loss_final
 
 def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, c, model_name, ap, cuda=True, model_params=None):
-    # adicionar do mixeup+: https://github.com/qiuqiangkong/panns_transfer_to_gtzan/blob/master/pytorch/main.py
     loss1_weight = c.train_config['loss1_weight']
     use_mixup = False if 'mixup' not in c.model else c.model['mixup']
     if use_mixup:
@@ -129,42 +131,7 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
         mixup_augmenter = Mixup(mixup_alpha=mixup_alpha)
         print("Enable Mixup with alpha:", mixup_alpha)
     
-    if(model_name == 'spiraconv_v1'):
-        model = SpiraConvV1(c)
-    elif (model_name == 'spiraconv_v2'):
-        model = SpiraConvV2(c)
-    elif (model_name == 'spiraconv_v3'):
-        if not model_params:
-            model = SpiraConvV3(c)
-        else:
-            model = SpiraConvV3(**model_params)
-    
-    elif (model_name == 'spiraconv_v4'):
-        if not model_params:
-            model = SpiraConvV4(c)
-        else:
-            model = SpiraConvV4(**model_params)
-    elif (model_name == 'spiraconvlstm_v1'):
-        model = SpiraConvLSTMV1(c)
-
-    elif (model_name == 'spiraconvattn_v1'):
-            model = SpiraConvAttnV1(c)
-
-    elif (model_name == 'vit_v1'):
-        model = SpiraVITv1(c)
-    elif (model_name == 'vit_v2'):
-        model = SpiraVITv2(c)
-    elif (model_name == 'spt_v1'):
-        model = SpiraSpTv1(c)
-    elif (model_name == 'spt_v2'):
-        if not model_params:
-            model = SpiraSpTv2(c)
-        else:
-            model = SpiraSpTv2(**model_params)
-    elif(model_name == 'panns'):
-        model = Transfer_Cnn14(c)
-    else:
-        raise Exception(" The model '"+model_name+"' is not suported")
+    model = return_model(c, model_params)
 
     if c.train_config['optimizer'] == 'adam':
         optimizer = torch.optim.Adam(model.parameters(),
@@ -233,8 +200,14 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
                     target = target.cuda()
                 if use_mixup:
                     # print("Usando mixup")
-                    mixup_lambda = torch.FloatTensor(mixup_augmenter.get_lambda(len(feature))).to(feature.device)
-                    output = model(feature, mixup_lambda)
+                    batch_len = len(feature)
+                    if (batch_len%2) != 0:
+                        batch_len -= 1
+                        feature = feature[:batch_len]
+                        target = target[:batch_len]
+
+                    mixup_lambda = torch.FloatTensor(mixup_augmenter.get_lambda(batch_len)).to(feature.device)
+                    output = model(feature[:batch_len], mixup_lambda)
                     target = do_mixup(target, mixup_lambda)
                     # print(output.shape, target.shape)
                     # print(target)
@@ -247,7 +220,7 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
                     idxs = (target == c.dataset['patient_class'])
                     loss_patient = criterion(output[idxs], target[idxs])
                     loss = (loss_control + loss_patient)/2
-                    loss = (loss1_weight*loss) + torch.abs(loss_control - loss_patient)/2
+                    # loss = (loss1_weight*loss) + torch.abs(loss_control - loss_patient)/2
                     # print('loss:',loss.item(), loss_control.item(), loss_patient.item())
                 else:
                     loss = criterion(output, target)

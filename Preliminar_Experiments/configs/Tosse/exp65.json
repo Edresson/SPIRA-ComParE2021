@@ -1,5 +1,5 @@
 {
-    "model_name":"panns", // spiraconv_v1 and spiraconv_v2
+    "model_name":"panns_mobile", // spiraconv_v1 and spiraconv_v2
     "seed":42,
     "dataset":{
         "class_balancer_batch": true,  // if true use WeightedRandomSampler for get a balanced batch
@@ -12,15 +12,15 @@
         "max_seq_len": null, // the data loader set automatically this value and save in train_config['logs_path']/config.json. its is max time dimension value in your train dataset. For convert this value to seconds use: value*hop_length/sample_rate
 
         // train dataset
-        "train_csv":"../Speech/dist/lab/train.csv", // format path_wav, class
-        "train_data_root_path": "../Speech/dist/wav_normalized/", // complementary path for csv
+        "train_csv":"../Tosse/dist/lab/train.csv", // format path_wav, class
+        "train_data_root_path": "../Tosse/dist/wav_normalized/", // complementary path for csv
         // evaluation dataset
 
-        "eval_csv":"../Speech/dist/lab/devel.csv", // format path_wav, class
-        "eval_data_root_path": "../Speech/dist/wav_normalized/", // complementary path for csv
+        "eval_csv":"../Tosse/dist/lab/devel.csv", // format path_wav, class
+        "eval_data_root_path": "../Tosse/dist/wav_normalized/", // complementary path for csv
         // test dataset
-        "test_csv":"../Speech/dist/lab/test.csv", // format path_wav, class
-        "test_data_root_path": "../Speech/dist/wav_normalized/", // complementary path for csv
+        "test_csv":"../Tosse/dist/lab/test.csv", // format path_wav, class
+        "test_data_root_path": "../Tosse/dist/wav_normalized/", // complementary path for csv
         // noise dataset for data aumentation
         "noise_csv": null,// format path_wav
         "noise_data_root_path": null, // complementary path for csv
@@ -29,10 +29,10 @@
         "patient_class": 1 // positive
     },
     "model":{
-        "pretreined_checkpoint": "../Cnn14_16k_mAP=0.438.pth", // downlaod: https://zenodo.org/record/3987831/files/Cnn14_16k_mAP%3D0.438.pth?download=1
+        "pretreined_checkpoint": "../MobileNetV1_mAP=0.389.pth", // downlaod: https://zenodo.org/record/3987831/files/Cnn14_16k_mAP%3D0.438.pth?download=1
         "freeze_base": false,
         "mixup": true,
-        "mixup_alpha": 0.1,
+        "mixup_alpha": 1,
         "spec_aug": true,
         "num_class":1
     },
@@ -48,7 +48,7 @@
         "batch_size": 16,
         "seed": 42,
         "num_workers": 14,
-        "logs_path": "../Speech/Checkpoints/Experiment-53-all-testes/",
+        "logs_path": "../Tosse/Checkpoints/Experiment-65-all-tests/",
         "reinit_layers": null,
         "summary_interval": 10,
         "checkpoint_interval": 500
