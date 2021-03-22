@@ -129,8 +129,8 @@ def run_ensamble_multi_exp(experiment_dirs, test_csv, test_root_dir, batch_size,
     if return_potential:
         return preds, targets, file_names, c 
     else:
-        df = pd.DataFrame({'filename': file_names, 'label':preds.astype(int)})
-        df['label'] = df['label'].replace(int(c.dataset['control_class']), 'negative', regex=True).replace(int(c.dataset['patient_class']), 'positive', regex=True)
+        df = pd.DataFrame({'filename': file_names, 'prediction':preds.astype(int)})
+        df['prediction'] = df['prediction'].replace(int(c.dataset['control_class']), 'negative', regex=True).replace(int(c.dataset['patient_class']), 'positive', regex=True)
         if output_csv:
             out_csv_path = output_csv
         else:

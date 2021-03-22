@@ -216,8 +216,8 @@ def run_test_all_kfolds(experiment_dir, test_csv, test_root_dir, batch_size, num
     if return_potential:
         return preds, targets, file_names, c 
     else: 
-        df = pd.DataFrame({'filename': file_names, 'label':preds.astype(int)})
-        df['label'] = df['label'].replace(int(c.dataset['control_class']), 'negative', regex=True).replace(int(c.dataset['patient_class']), 'positive', regex=True)
+        df = pd.DataFrame({'filename': file_names, 'prediction':preds.astype(int)})
+        df['prediction'] = df['prediction'].replace(int(c.dataset['control_class']), 'negative', regex=True).replace(int(c.dataset['patient_class']), 'positive', regex=True)
         if output_csv:
             out_csv_path = output_csv
         else:
@@ -359,9 +359,9 @@ def run_test_all_seeds(experiment_dir, test_csv, test_root_dir, batch_size, num_
             return f1, uar, acc_control, acc_patient
     if return_potential:
         return preds, targets, file_names, c 
-    else: 
-        df = pd.DataFrame({'filename': file_names, 'label':preds.astype(int)})
-        df['label'] = df['label'].replace(int(c.dataset['control_class']), 'negative', regex=True).replace(int(c.dataset['patient_class']), 'positive', regex=True)
+    else:
+        df = pd.DataFrame({'filename': file_names, 'prediction':preds.astype(int)})
+        df['prediction'] = df['prediction'].replace(int(c.dataset['control_class']), 'negative', regex=True).replace(int(c.dataset['patient_class']), 'positive', regex=True)
         if output_csv:
             out_csv_path = output_csv
         else:

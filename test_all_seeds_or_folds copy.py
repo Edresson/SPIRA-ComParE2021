@@ -238,8 +238,8 @@ def run_test_all_seeds(args, cuda=True, debug=False, return_potential=False):
     if return_potential:
         return preds, file_names
     else: 
-        df = pd.DataFrame({'filename': file_names, 'label':preds.astype(int)})
-        df['label'] = df['label'].replace(int(c.dataset['control_class']), 'negative', regex=True).replace(int(c.dataset['patient_class']), 'positive', regex=True)
+        df = pd.DataFrame({'filename': file_names, 'prediction':preds.astype(int)})
+        df['prediction'] = df['prediction'].replace(int(c.dataset['control_class']), 'negative', regex=True).replace(int(c.dataset['patient_class']), 'positive', regex=True)
         if args.output_csv:
             out_csv_path = args.output_csv
         else:
