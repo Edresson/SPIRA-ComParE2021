@@ -266,7 +266,10 @@ def run_test_all_seeds(experiment_dir, test_csv, test_root_dir, batch_size, num_
 
         c.data_aumentation['noisetypes'] = noisetypes
         c.data_aumentation['musan_path'] = musan_path
-
+        if c.dataset['temporal_control'] == 'one_window':
+            c.dataset['temporal_control']  = 'overlapping'
+            # c.dataset['step'] = 1
+        
         # enablePrint()            
         testdataloader = test_dataloader(c, ap, max_seq_len=max_seq_len, insert_noise=insert_noise, num_additive_noise=num_additive_noise, num_specaug=num_specaug)
         # blockPrint()

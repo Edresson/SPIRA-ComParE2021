@@ -39,7 +39,7 @@ def enablePrint():
 
 
 def run_train(c, args, model_params=None):
-
+        c = copy_config_dict(c)
         ap = AudioProcessor(**c.audio)
 
         log_path = os.path.join(c.train_config['logs_path'], c.model_name)
@@ -49,12 +49,15 @@ def run_train(c, args, model_params=None):
 
         tensorboard = TensorboardWriter(os.path.join(log_path,'tensorboard'))
 
-        trainloader = train_dataloader(c, ap, class_balancer_batch=c.dataset['class_balancer_batch'])
+        trainloader = train_dataloader(copy_config_dict(c), ap, class_balancer_batch=c.dataset['class_balancer_batch'])
         max_seq_len = trainloader.dataset.get_max_seq_lenght()
         c.dataset['max_seq_len'] = max_seq_len
 
         # save config in train dir, its necessary for test before train and reproducity
         save_config_file(c, os.path.join(log_path,'config.json'))
+        # one_window in eval use overlapping
+        if c.dataset['temporal_control'] == 'one_window':
+            c.dataset['temporal_control']  = 'overlapping'
 
         evaloader = eval_dataloader(c, ap, max_seq_len=max_seq_len)
     

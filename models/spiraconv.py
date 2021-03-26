@@ -56,10 +56,11 @@ class SpiraConvV4(nn.Module):
 
         self.conv = nn.Sequential(*convs)
 
-        if self.temporal_control == 'padding' or self.temporal_control == 'overlapping':
+        if self.temporal_control == 'padding' or self.temporal_control == 'overlapping' or self.temporal_control == 'one_window':
             # its very useful because if you change the convlutional arquiture the model calculate its, and you dont need change this :)
             # I prefer activate the network in toy example because is more easy than calculate the conv output
             # get zeros input
+            print(self.max_seq_len)
             inp = torch.zeros(1, 1, self.max_seq_len, self.num_feature)
             # get out shape
             toy_activation_shape = self.conv(inp).shape

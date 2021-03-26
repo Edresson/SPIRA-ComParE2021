@@ -11,12 +11,12 @@ def get_df(d):
   return pd.read_csv(d, sep=',').replace({'negative': control_class}, regex=True).replace({'positive': patient_class}, regex=True)
 
 
-# target_csv = "../Speech/dist/lab/devel.csv"
-# predicted_csv = "../Speech/Experiments_Final_kfolds/Experiment-1/devel.csv"
+target_csv = "../Tosse/dist/lab/devel.csv"
+predicted_csv = "../Tosse/Experiments_Final_one_window_Final/Experiment-4/devel.csv"
 # predicted_csv = "../Speech/Experiments_Final/Experiment-3/devel.csv"
 
-target_csv = "../Tosse/dist/lab/devel.csv"
-predicted_csv = "../Tosse/Experiments_Final_kfolds/Experiment-2/devel.csv"
+# target_csv = "../Tosse/dist/lab/devel.csv"
+# predicted_csv = "../Tosse/Experiments_Final_kfolds/Experiment-2/devel.csv"
 # predicted_csv = "../Tosse/Experiments_Final/Experiment-2/devel.csv"
 
 target_df = get_df(target_csv).values.tolist()

@@ -96,7 +96,7 @@ class Dataset(Dataset):
         assert os.path.isfile(self.dataset_csv),"Test or Train CSV file don't exists! Fix it in config.json"
         
         
-        accepted_temporal_control = ['overlapping', 'padding', 'avgpool', 'speech_t']
+        accepted_temporal_control = ['overlapping', 'padding', 'avgpool', 'speech_t', 'one_window']
         assert (self.c.dataset['temporal_control'] in accepted_temporal_control),"You cannot use the padding_with_max_length option in conjunction with the split_wav_using_overlapping option, disable one of them !!"
 
         self.control_class = c.dataset['control_class']
@@ -120,7 +120,7 @@ class Dataset(Dataset):
             print("The Max Time dim Lenght is: {} (+- {} seconds)".format(self.max_seq_len, ( self.max_seq_len*self.c.audio['hop_length'])/self.ap.sample_rate))
             print("The Min Time dim Lenght is: {} (+- {} seconds)".format(min_seq, (min_seq*self.c.audio['hop_length'])/self.ap.sample_rate))
 
-        elif self.c.dataset['temporal_control'] == 'overlapping' or self.c.dataset['temporal_control'] == 'speech_t':
+        elif self.c.dataset['temporal_control'] == 'overlapping' or self.c.dataset['temporal_control'] == 'speech_t' or self.c.dataset['temporal_control'] == 'one_window':
             # set max len for window_len seconds multiply by sample_rate and divide by hop_lenght
             self.max_seq_len = int(((self.c.dataset['window_len']*self.ap.sample_rate)/c.audio['hop_length'])+1)
             print("The Max Time dim Lenght is: ", self.max_seq_len, "It's use overlapping technique, window:", self.c.dataset['window_len'], "step:", self.c.dataset['step'])
@@ -185,14 +185,30 @@ class Dataset(Dataset):
                 feature = self.ap.get_feature_from_audio(wav[:, :self.ap.sample_rate*self.c.dataset['window_len']]).transpose(1, 2)
                 target = torch.FloatTensor([class_name])
             elif len(features) < 1:
+                # padding audios less than 2 seconds
+                feature = self.ap.get_feature_from_audio(wav).transpose(1, 2)
+                # padding for max sequence 
+                zeros = torch.zeros(1, self.max_seq_len - feature.size(1), feature.size(2))
+                # append zeros before features
+                feature = torch.cat([feature, zeros], 1)
+                target = torch.FloatTensor([class_name])
                 #print("ERROR: Some sample in your dataset is less than %d seconds! Change the size of the overleapping window"%self.c.dataset['window_len'])
-                raise RuntimeError("ERROR: Some sample in your dataset is less than {} seconds! Change the size of the overleapping window (CONFIG.dataset['window_len'])".format(self.c.dataset['window_len']))
+                #raise RuntimeError("ERROR: Some sample in your dataset is less than {} seconds! Change the size of the overleapping window (CONFIG.dataset['window_len'])".format(self.c.dataset['window_len']))
             else:
                 feature = torch.cat(features, dim=0)
                 target = torch.cat(targets, dim=0)
             if self.c.dataset['temporal_control'] == 'speech_t':
                 feature = feature.unsqueeze(1)                
                 target = torch.FloatTensor([target[0]])
+
+        elif self.c.dataset['temporal_control'] == 'one_window':
+            # print( "one_window")
+            # choise a random part of audio 
+            step = self.ap.sample_rate*self.c.dataset['window_len']
+            # print(wav.shape, step)
+            idx = random.randint(0, wav.size(1)-(step+1))
+            feature = self.ap.get_feature_from_audio(wav[:, idx:idx+step]).transpose(1, 2)
+            target = torch.FloatTensor([class_name])
         else:
             # feature shape (Batch_size, n_features, timestamp)
             feature = self.ap.get_feature_from_audio(wav)
@@ -208,7 +224,8 @@ class Dataset(Dataset):
                 target = torch.FloatTensor([class_name])                
             else: # avgpoling
                 target = torch.FloatTensor([class_name])
-        
+
+
         if self.test_insert_noise and not self.c.dataset['temporal_control'] == 'overlapping' and not self.c.dataset['temporal_control'] == 'speech_t':
             features = []
             targets = []
