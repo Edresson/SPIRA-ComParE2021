@@ -1,4 +1,4 @@
-# SPIRA-Network
+# SPIRA-ComParE2021
 
 SPIRA-Network is an project that aims to detect the presence of respiratory failure using deep learning. SPIRA stands for "
 Sistema de Detecção Precode de Insuficiência Respiratória por meio de Análise de Áudio" (in english, "Respiratory Failure Detection System Through Analysis of Audio").
