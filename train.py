@@ -15,7 +15,7 @@ from utils.generic_utils import set_init_dict
 from utils.generic_utils import NoamLR, binary_acc
 from utils.generic_utils import save_best_checkpoint, copy_config_dict
 from utils.models import return_model
-# mixup
+
 from utils.generic_utils import do_mixup, Mixup, Clip_NLL, Clip_BCE
 
 from utils.radam import RAdam
@@ -41,14 +41,12 @@ def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda, lo
     targets = []
     with torch.no_grad():
         for feature, target, slices, targets_org in testloader:       
-            
-            #try:
+
             if cuda:
                 feature = feature.cuda()
                 target = target.cuda()
             output = model(feature).float()
 
-            # output = torch.round(output * 10**4) / (10**4)
             if c.dataset['temporal_control'] == 'overlapping':
                 # unpack overlapping for calculation loss and accuracy 
                 if slices is not None and targets_org is not None:
@@ -69,7 +67,7 @@ def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda, lo
 
                     target = torch.stack(new_target, dim=0)
                     output = torch.stack(new_output, dim=0)
-                    #print(target, targets_org)
+
                     if cuda:
                         output = output.cuda()
                         target = target.cuda()
@@ -109,8 +107,7 @@ def validation(criterion, ap, model, c, testloader, tensorboard, step,  cuda, lo
     loss_patient = loss_patient / len(patient_target)
 
     loss_balanced = (loss_control + loss_patient) / 2 
-    
-    # loss_final = (loss1_weight*loss_balanced) + abs(loss_control - loss_patient)/2
+
     loss_final = loss_balanced
 
     mean_acc = acc / len(testloader.dataset)
@@ -156,12 +153,7 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
             model_dict = set_init_dict(model_dict, checkpoint, c)
             model.load_state_dict(model_dict)
             del model_dict
-        '''try:
-            optimizer.load_state_dict(checkpoint['optimizer'])
-        except:
-            print(" > Optimizer state is not loaded from checkpoint path, you see this mybe you change the optimizer")
-        '''
-        step = 0 #step = checkpoint['step']
+        step = 0
     else:
         print("Starting new training run")
         step = 0
@@ -175,12 +167,10 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
     # convert model from cuda
     if cuda:
         model = model.cuda()
-        # optimizer = optimizer.cuda()
 
     # define loss function
     if use_mixup:
-        # criterion = Clip_NLL()
-         criterion = Clip_BCE()
+        criterion = Clip_BCE()
     else:
         criterion = nn.BCELoss()
     eval_criterion = nn.BCELoss(reduction='sum')
@@ -198,9 +188,8 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
                 if cuda:
                     feature = feature.cuda()
                     target = target.cuda()
-                # print(feature.shape)
+
                 if use_mixup:
-                    # print("Usando mixup")
                     batch_len = len(feature)
                     if (batch_len%2) != 0:
                         batch_len -= 1
@@ -210,8 +199,6 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
                     mixup_lambda = torch.FloatTensor(mixup_augmenter.get_lambda(batch_len)).to(feature.device)
                     output = model(feature[:batch_len], mixup_lambda)
                     target = do_mixup(target, mixup_lambda)
-                    # print(output.shape, target.shape)
-                    # print(target)
                 else:
                     output = model(feature)
                 # Calculate loss
@@ -221,12 +208,9 @@ def train(args, log_dir, checkpoint_path, trainloader, testloader, tensorboard, 
                     idxs = (target == c.dataset['patient_class'])
                     loss_patient = criterion(output[idxs], target[idxs])
                     loss = (loss_control + loss_patient)/2
-                    # loss = (loss1_weight*loss) + torch.abs(loss_control - loss_patient)/2
-                    # print('loss:',loss.item(), loss_control.item(), loss_patient.item())
                 else:
                     loss = criterion(output, target)
 
-                # loss = criterion(output, target)
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()

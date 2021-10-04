@@ -1,4 +1,4 @@
-# Credits: The models here is adapted from: https://github.com/qiuqiangkong/audioset_tagging_cnn
+# Reference: The models here is adapted from: https://github.com/qiuqiangkong/audioset_tagging_cnn
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
